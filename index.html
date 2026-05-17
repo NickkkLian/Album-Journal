@@ -185,6 +185,7 @@ textarea{resize:vertical;line-height:1.8;}
 .tl-tile[draggable]{cursor:grab;}
 .tl-tile.drag-over{outline:2px dashed var(--acc);outline-offset:2px;}
 .tl-tile.dragging{opacity:0.3;}
+.tierlist-items.tier-drag-over,.unranked-tiles.tier-drag-over{outline:2px dashed var(--acc);outline-offset:-2px;}
 
 /* by year */
 .year-section{margin-bottom:2rem;}
@@ -510,41 +511,179 @@ function getCollectionGrid(filtered){
 }
 
 // ─────────────────────────────────────────────
-// DRAG AND DROP
+// DRAG AND DROP  (cross-tier)
 // ─────────────────────────────────────────────
-function onDragStart(e,id,tier){
-  dragId=id; dragTier=tier;
+function clearDragVisuals(){
+  document.querySelectorAll('.tl-tile').forEach(t=>t.classList.remove('drag-over','dragging'));
+  document.querySelectorAll('.tierlist-items,.unranked-tiles').forEach(t=>t.classList.remove('tier-drag-over'));
+}
+function onDragStart(e,id){
+  dragId=id;
   e.dataTransfer.effectAllowed='move';
   setTimeout(()=>{ const el=document.querySelector(`[data-id="${id}"]`); if(el) el.classList.add('dragging'); },0);
 }
 function onDragOver(e,id){
+  e.preventDefault(); e.stopPropagation();
   if(id===dragId) return;
+  clearDragVisuals();
+  document.querySelectorAll('.tl-tile.dragging').forEach(t=>t.classList.add('dragging'));
+  const el=document.querySelector(`[data-id="${id}"]`); if(el) el.classList.add('drag-over');
+}
+function onDragOverTier(e,tier){
   e.preventDefault();
-  document.querySelectorAll('.tl-tile').forEach(t=>t.classList.remove('drag-over'));
-  const el=document.querySelector(`[data-id="${id}"]`);
-  if(el) el.classList.add('drag-over');
+  clearDragVisuals();
+  document.querySelectorAll('.tl-tile.dragging').forEach(t=>t.classList.add('dragging'));
+  const sel=tier===''?'.unranked-tiles':`[data-tier="${CSS.escape(tier)}"]`;
+  const el=document.querySelector(sel); if(el) el.classList.add('tier-drag-over');
 }
-function onDragEnd(){
-  document.querySelectorAll('.tl-tile').forEach(t=>{ t.classList.remove('drag-over'); t.classList.remove('dragging'); });
-  dragId=null; dragTier=null;
-}
+function onDragEnd(){ clearDragVisuals(); dragId=null; dragTier=null; }
+
 function onDrop(e,targetId,targetTier){
-  e.preventDefault();
-  document.querySelectorAll('.tl-tile').forEach(t=>{ t.classList.remove('drag-over'); t.classList.remove('dragging'); });
-  if(!dragId||dragId===targetId||dragTier!==targetTier) return;
-  // Reorder within the albums array
-  const dragAlbum=albums.find(a=>a.id===dragId);
-  if(!dragAlbum) return;
-  // Get tier order positions
-  const tierAlbums=albums.filter(a=>a.tier===dragTier);
-  const dIdx=tierAlbums.findIndex(a=>a.id===dragId);
-  const tIdx=tierAlbums.findIndex(a=>a.id===targetId);
-  // Remove drag item from albums, reinsert relative to target
+  e.preventDefault(); e.stopPropagation();
+  clearDragVisuals();
+  if(!dragId||dragId===targetId) return;
+  const drag=albums.find(a=>a.id===dragId); if(!drag) return;
+  drag.tier=targetTier||null;
+  const oldPos=albums.indexOf(drag);
   albums=albums.filter(a=>a.id!==dragId);
   const newTargetPos=albums.findIndex(a=>a.id===targetId);
-  albums.splice(dIdx<tIdx ? newTargetPos+1 : newTargetPos, 0, dragAlbum);
-  dragId=null; dragTier=null;
-  save(); render();
+  albums.splice(oldPos<albums.indexOf(albums.find(a=>a.id===targetId))?newTargetPos+1:newTargetPos,0,drag);
+  dragId=null; save(); render();
+}
+function onDropOnTier(e,tier){
+  e.preventDefault();
+  clearDragVisuals();
+  if(!dragId) return;
+  const drag=albums.find(a=>a.id===dragId); if(!drag) return;
+  drag.tier=tier||null;
+  albums=albums.filter(a=>a.id!==dragId);
+  // Insert after last album of that tier, or at end
+  let idx=albums.length;
+  for(let i=albums.length-1;i>=0;i--){ if((albums[i].tier||'')===(tier||'')){ idx=i+1; break; } }
+  albums.splice(idx,0,drag);
+  dragId=null; save(); render();
+}
+
+// ─────────────────────────────────────────────
+// CANVAS EXPORT
+// ─────────────────────────────────────────────
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();
+}
+function fitText(ctx,text,maxW){
+  if(ctx.measureText(text).width<=maxW) return text;
+  while(text.length>1&&ctx.measureText(text+'…').width>maxW) text=text.slice(0,-1);
+  return text+'…';
+}
+function wrapText(ctx,text,maxW,maxLines){
+  const words=text.split(' '); const lines=[]; let line='';
+  for(const w of words){
+    const test=line?line+' '+w:w;
+    if(ctx.measureText(test).width>maxW&&line){ lines.push(line); line=w; if(lines.length>=maxLines-1){break;} }
+    else line=test;
+  }
+  if(line) lines.push(lines.length>=maxLines?fitText(ctx,line,maxW):line);
+  return lines.slice(0,maxLines);
+}
+
+function exportTierImage(){
+  const DPR=2, CW=1100, LABEL_W=96, BORDER=2, GAP=6, PAD=8;
+  const TW=126, TH=90, HEADER_H=64;
+  const AREA_W=CW-LABEL_W-BORDER;
+  const TPR=Math.floor((AREA_W-GAP)/(TW+GAP)); // tiles per row
+
+  const TLABELS={T0:'#ff7070',T1:'#ffaa50',T2:'#ffe050',T3:'#b0e050',T4:'#50d880',T5:'#50d0d8',T6:'#7080f0',T7:'#a060e8',T8:'#c860c0',Trash:'#c070ff'};
+  const DARK_LABEL=new Set(['T6','T7','T8','Trash']);
+  const BG='#0e0d0b',SURF='#1c1b18',BRD='#2e2b24',ROWBG='#111009',ROWBRD='#2a2620';
+  const FG='#ece6d2',FG2='#6a6055',ACC='#c89040';
+
+  const rowHeights=TIERS.map(tier=>{
+    const n=albums.filter(a=>a.tier===tier).length;
+    return Math.max(TH+GAP*2, Math.ceil(Math.max(n,1)/TPR)*(TH+GAP)+GAP);
+  });
+  const totalH=HEADER_H+rowHeights.reduce((s,h)=>s+h+BORDER,0)+BORDER;
+
+  const canvas=document.createElement('canvas');
+  canvas.width=CW*DPR; canvas.height=totalH*DPR;
+  const ctx=canvas.getContext('2d'); ctx.scale(DPR,DPR);
+
+  // bg
+  ctx.fillStyle=BG; ctx.fillRect(0,0,CW,totalH);
+
+  // header
+  ctx.fillStyle=FG; ctx.font='italic 300 28px Georgia,serif'; ctx.textBaseline='middle';
+  ctx.fillText('Album Journal',20,HEADER_H*0.45);
+  ctx.fillStyle=FG2; ctx.font='11px monospace';
+  ctx.fillText(`${albums.filter(a=>a.tier).length} ranked  ·  ${albums.length} total`,20,HEADER_H*0.78);
+
+  let y=HEADER_H;
+  TIERS.forEach((tier,ti)=>{
+    const h=rowHeights[ti];
+    const ta=albums.filter(a=>a.tier===tier);
+
+    // row top border
+    ctx.fillStyle=ROWBRD; ctx.fillRect(0,y,CW,BORDER); y+=BORDER;
+
+    // label bg
+    ctx.fillStyle=TLABELS[tier]||'#888'; ctx.fillRect(0,y,LABEL_W,h);
+    // label text
+    ctx.fillStyle=DARK_LABEL.has(tier)?'#eeeeee':'#111111';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.font=`600 ${tier.length>2?'15':'24'}px Georgia,serif`;
+    ctx.fillText(tier,LABEL_W/2,y+h/2); ctx.textAlign='left';
+
+    // label/tile border
+    ctx.fillStyle=ROWBRD; ctx.fillRect(LABEL_W,y,BORDER,h);
+
+    // tiles bg
+    ctx.fillStyle=ROWBG; ctx.fillRect(LABEL_W+BORDER,y,CW-LABEL_W-BORDER,h);
+
+    if(!ta.length){
+      ctx.fillStyle=FG2; ctx.font='italic 12px Georgia,serif'; ctx.textBaseline='middle';
+      ctx.fillText('—',LABEL_W+BORDER+16,y+h/2);
+    } else {
+      ta.forEach((album,i)=>{
+        const col=i%TPR, row=Math.floor(i/TPR);
+        const tx=LABEL_W+BORDER+GAP+col*(TW+GAP);
+        const ty=y+GAP+row*(TH+GAP);
+
+        // tile bg + border
+        ctx.fillStyle=SURF; roundRect(ctx,tx,ty,TW,TH,4); ctx.fill();
+        ctx.strokeStyle=BRD; ctx.lineWidth=1; roundRect(ctx,tx,ty,TW,TH,4); ctx.stroke();
+
+        // album name (up to 2 lines)
+        ctx.fillStyle=FG; ctx.font=`500 12px Georgia,serif`; ctx.textBaseline='top';
+        const nameLines=wrapText(ctx,album.name,TW-PAD*2,2);
+        nameLines.forEach((ln,li)=>ctx.fillText(ln,tx+PAD,ty+PAD+li*15));
+
+        // artist
+        const ay=ty+TH-PAD-(album.tracks.some(t=>t.isGreat)?22:10);
+        if(album.artist){
+          ctx.fillStyle=FG2; ctx.font='10px monospace'; ctx.textBaseline='top';
+          ctx.fillText(fitText(ctx,album.artist,TW-PAD*2),tx+PAD,ay);
+        }
+
+        // favs
+        const gc=album.tracks.filter(t=>t.isGreat).length;
+        if(gc){
+          ctx.fillStyle=ACC; ctx.font='9px monospace'; ctx.textBaseline='top';
+          ctx.fillText(`★ ${gc}`,tx+PAD,ty+TH-PAD-10);
+        }
+      });
+    }
+    y+=h;
+  });
+  // bottom border
+  ctx.fillStyle=ROWBRD; ctx.fillRect(0,y,CW,BORDER);
+
+  canvas.toBlob(blob=>{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='tier-list.png'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+  },'image/png');
 }
 
 // ─────────────────────────────────────────────
@@ -552,9 +691,9 @@ function onDrop(e,targetId,targetTier){
 // ─────────────────────────────────────────────
 function albumTile(a,tier){
   const gc=a.tracks.filter(t=>t.isGreat).length;
-  const t=tier||a.tier||'';
+  const t=tier!==undefined?tier:(a.tier||'');
   return `<div class="tl-tile" data-id="${a.id}" draggable="true"
-    ondragstart="onDragStart(event,'${a.id}','${esc(t)}')"
+    ondragstart="onDragStart(event,'${a.id}')"
     ondragover="onDragOver(event,'${a.id}')"
     ondrop="onDrop(event,'${a.id}','${esc(t)}')"
     ondragend="onDragEnd()"
@@ -567,11 +706,27 @@ function renderRankings(){
   if(!albums.length) return `<div class="empty"><span class="empty-icon">◈</span><div style="font-size:13px;">Add albums to start ranking.</div></div>`;
   const rows=TIERS.map(tier=>{
     const ta=albums.filter(a=>a.tier===tier);
-    return `<div class="tierlist-row"><div class="tierlist-label tl-lbl-${cls(tier)}">${esc(tier)}</div><div class="tierlist-items">${ta.length?ta.map(a=>albumTile(a,tier)).join(''):'<span class="tl-empty">—</span>'}</div></div>`;
+    return `<div class="tierlist-row">
+      <div class="tierlist-label tl-lbl-${cls(tier)}">${esc(tier)}</div>
+      <div class="tierlist-items" data-tier="${esc(tier)}"
+        ondragover="onDragOverTier(event,'${esc(tier)}')"
+        ondrop="onDropOnTier(event,'${esc(tier)}')">
+        ${ta.length?ta.map(a=>albumTile(a,tier)).join(''):'<span class="tl-empty">—</span>'}
+      </div>
+    </div>`;
   }).join('');
   const un=albums.filter(a=>!a.tier);
-  const uS=un.length?`<div class="unranked-wrap"><div class="unranked-header"><span class="mono-label">Unranked</span><span style="font-size:11px;color:var(--fg3);">${un.length}</span></div><div class="unranked-tiles">${un.map(a=>albumTile(a,'')).join('')}</div></div>`:'';
-  return `<div class="tierlist-wrap">${rows}</div>${uS}`;
+  const uS=un.length?`<div class="unranked-wrap">
+    <div class="unranked-header"><span class="mono-label">Unranked</span><span style="font-size:11px;color:var(--fg3);">${un.length}</span></div>
+    <div class="unranked-tiles" ondragover="onDragOverTier(event,'')" ondrop="onDropOnTier(event,'')">
+      ${un.map(a=>albumTile(a,'')).join('')}
+    </div>
+  </div>`:'';
+  return `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+      <button class="btn btn-ghost" onclick="exportTierImage()" style="font-size:11px;padding:6px 14px;">↓ Export as image</button>
+    </div>
+    <div class="tierlist-wrap">${rows}</div>${uS}`;
 }
 
 // ─────────────────────────────────────────────
