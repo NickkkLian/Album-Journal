@@ -1,6 +1,6 @@
 # album-journal
 
-my personal album tracker. paste a netease/qq music link, add the tracklist, star the good tracks, rank it in a tier list. that's it.
+my personal album tracker. paste a netease/qq music link, add the tracklist, star the good tracks, rank it in a tier list.
 
 live at: `https://your-name.github.io/album-journal`
 
