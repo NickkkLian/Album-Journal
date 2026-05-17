@@ -24,7 +24,7 @@
 
   --c-t0:#ff7070; --c-t1:#ffaa50; --c-t2:#ffe050;
   --c-t3:#b0e050; --c-t4:#50d880; --c-t5:#50d0d8;
-  --c-jp:#8090ff; --c-tr:#c070ff;
+  --c-t6:#7080f0; --c-t7:#a060e8; --c-t8:#c860c0; --c-tr:#c070ff;
 
   --t0b:#280800; --t0f:#e07040; --t0r:#803010;
   --t1b:#241400; --t1f:#d48830; --t1r:#7a4e0a;
@@ -32,7 +32,9 @@
   --t3b:#101800; --t3f:#80b020; --t3r:#3a5808;
   --t4b:#001a08; --t4f:#40b060; --t4r:#0a5820;
   --t5b:#001820; --t5f:#30b0b8; --t5r:#085060;
-  --jpb:#080c28; --jpf:#6878e0; --jpr:#1a2068;
+  --t6b:#0c0820; --t6f:#7080d8; --t6r:#201868;
+  --t7b:#160820; --t7f:#9050d0; --t7r:#3a1060;
+  --t8b:#200818; --t8f:#b84898; --t8r:#580830;
   --trb:#180820; --trf:#a060d8; --trr:#4a1878;
 }
 
@@ -91,7 +93,9 @@ textarea{resize:vertical;line-height:1.8;}
 .tb-T3{background:var(--t3b);color:var(--t3f);border:1px solid var(--t3r);}
 .tb-T4{background:var(--t4b);color:var(--t4f);border:1px solid var(--t4r);}
 .tb-T5{background:var(--t5b);color:var(--t5f);border:1px solid var(--t5r);}
-.tb-Just-Passed{background:var(--jpb);color:var(--jpf);border:1px solid var(--jpr);}
+.tb-T6{background:var(--t6b);color:var(--t6f);border:1px solid var(--t6r);}
+.tb-T7{background:var(--t7b);color:var(--t7f);border:1px solid var(--t7r);}
+.tb-T8{background:var(--t8b);color:var(--t8f);border:1px solid var(--t8r);}
 .tb-Trash{background:var(--trb);color:var(--trf);border:1px solid var(--trr);}
 .tier-pills{display:flex;gap:6px;flex-wrap:wrap;}
 .tier-pill{background:transparent;border:1px solid var(--brd);color:var(--fg2);font-family:'DM Mono',monospace;font-size:11px;padding:4px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s;}
@@ -102,7 +106,9 @@ textarea{resize:vertical;line-height:1.8;}
 .tp-T3{background:var(--t3b);color:var(--t3f);border-color:var(--t3r);}
 .tp-T4{background:var(--t4b);color:var(--t4f);border-color:var(--t4r);}
 .tp-T5{background:var(--t5b);color:var(--t5f);border-color:var(--t5r);}
-.tp-Just-Passed{background:var(--jpb);color:var(--jpf);border-color:var(--jpr);}
+.tp-T6{background:var(--t6b);color:var(--t6f);border-color:var(--t6r);}
+.tp-T7{background:var(--t7b);color:var(--t7f);border-color:var(--t7r);}
+.tp-T8{background:var(--t8b);color:var(--t8f);border-color:var(--t8r);}
 .tp-Trash{background:var(--trb);color:var(--trf);border-color:var(--trr);}
 
 /* tracks */
@@ -120,14 +126,15 @@ textarea{resize:vertical;line-height:1.8;}
 .tierlist-row{display:flex;align-items:stretch;border-bottom:2px solid #2a2620;min-height:100px;}
 .tierlist-row:last-child{border-bottom:none;}
 .tierlist-label{width:88px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:2.2rem;letter-spacing:-0.02em;color:#111;text-shadow:0 1px 3px rgba(0,0,0,0.3);border-right:2px solid #2a2620;user-select:none;text-align:center;padding:4px 6px;line-height:1.1;}
-.tl-lbl-Just-Passed{font-size:0.85rem;letter-spacing:0;}
 .tl-lbl-T0{background:var(--c-t0);}
 .tl-lbl-T1{background:var(--c-t1);}
 .tl-lbl-T2{background:var(--c-t2);}
 .tl-lbl-T3{background:var(--c-t3);}
 .tl-lbl-T4{background:var(--c-t4);}
 .tl-lbl-T5{background:var(--c-t5);}
-.tl-lbl-Just-Passed{background:var(--c-jp);}
+.tl-lbl-T6{background:var(--c-t6);color:#eee;text-shadow:0 1px 3px rgba(0,0,0,0.3);}
+.tl-lbl-T7{background:var(--c-t7);color:#eee;text-shadow:0 1px 3px rgba(0,0,0,0.4);}
+.tl-lbl-T8{background:var(--c-t8);color:#eee;text-shadow:0 1px 3px rgba(0,0,0,0.4);}
 .tl-lbl-Trash{background:var(--c-tr);color:#eee;text-shadow:0 1px 3px rgba(0,0,0,0.5);}
 .tierlist-items{flex:1;display:flex;flex-wrap:wrap;align-content:flex-start;gap:6px;padding:8px 10px;background:#111009;}
 .tl-tile{width:108px;min-height:80px;background:#1c1b18;border:1px solid #2e2b24;border-radius:4px;padding:8px;cursor:pointer;transition:background 0.15s,border-color 0.15s;display:flex;flex-direction:column;justify-content:space-between;gap:4px;}
@@ -174,6 +181,24 @@ textarea{resize:vertical;line-height:1.8;}
 .link-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--brd);border-radius:4px;font-size:12px;color:var(--fg2);text-decoration:none;margin-bottom:1.5rem;transition:border-color 0.15s,color 0.15s;}
 .link-btn:hover{border-color:var(--brd2);color:var(--fg);}
 
+/* drag and drop */
+.tl-tile[draggable]{cursor:grab;}
+.tl-tile.drag-over{outline:2px dashed var(--acc);outline-offset:2px;}
+.tl-tile.dragging{opacity:0.3;}
+
+/* by year */
+.year-section{margin-bottom:2rem;}
+.year-heading{font-family:'Cormorant Garamond',Georgia,serif;font-weight:300;font-style:italic;font-size:1.6rem;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--brd);}
+.year-table{width:100%;border-collapse:collapse;}
+.year-table td{padding:8px 10px;border-bottom:1px solid var(--brd);vertical-align:middle;}
+.year-table tr:last-child td{border-bottom:none;}
+.year-table tr{cursor:pointer;}
+.year-table tr:hover td{background:var(--s1);}
+.yt-rank{width:76px;}
+.yt-name{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:1rem;}
+.yt-artist{color:var(--fg2);font-size:12px;}
+.yt-fav{color:var(--acc);font-size:11px;text-align:right;white-space:nowrap;}
+
 ::-webkit-scrollbar{width:5px;}
 ::-webkit-scrollbar-track{background:var(--bg);}
 ::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:3px;}
@@ -199,8 +224,13 @@ let syncState = 'idle';
 let syncMsg   = 'Not set up';
 let syncTimer = null;
 
-const TIERS     = ['T0','T1','T2','T3','T4','T5','Just Passed','Trash'];
-const TIER_DESC = {T0:'Essential',T1:'Amazing',T2:'Great',T3:'Good',T4:'Decent',T5:'Okay','Just Passed':'Just passed',Trash:'Not for me'};
+const TIERS     = ['T0','T1','T2','T3','T4','T5','T6','T7','T8','Trash'];
+const TIER_DESC = {T0:'Essential',T1:'Amazing',T2:'Great',T3:'Good',T4:'Decent',T5:'Okay',T6:'Meh',T7:'Weak',T8:'Barely',Trash:'Not for me'};
+const TIER_RANK = {T0:0,T1:1,T2:2,T3:3,T4:4,T5:5,T6:6,T7:7,T8:8,Trash:9};
+function tierRank(t){ return t!=null ? (TIER_RANK[t]??9) : 10; }
+
+let dragId   = null;
+let dragTier = null;
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 
@@ -357,8 +387,9 @@ function renderMain(){
     <div class="tab-bar">
       <button class="tab-btn${activeTab==='collection'?' active':''}" onclick="setTab('collection')">Collection</button>
       <button class="tab-btn${activeTab==='rankings'?' active':''}" onclick="setTab('rankings')">Rankings</button>
+      <button class="tab-btn${activeTab==='byyear'?' active':''}" onclick="setTab('byyear')">By Year</button>
     </div>
-    ${activeTab==='collection'?renderCollection(filtered):renderRankings()}`;
+    ${activeTab==='collection'?renderCollection(filtered):activeTab==='rankings'?renderRankings():renderByYear()}`;
 }
 
 // ─────────────────────────────────────────────
@@ -479,11 +510,55 @@ function getCollectionGrid(filtered){
 }
 
 // ─────────────────────────────────────────────
+// DRAG AND DROP
+// ─────────────────────────────────────────────
+function onDragStart(e,id,tier){
+  dragId=id; dragTier=tier;
+  e.dataTransfer.effectAllowed='move';
+  setTimeout(()=>{ const el=document.querySelector(`[data-id="${id}"]`); if(el) el.classList.add('dragging'); },0);
+}
+function onDragOver(e,id){
+  if(id===dragId) return;
+  e.preventDefault();
+  document.querySelectorAll('.tl-tile').forEach(t=>t.classList.remove('drag-over'));
+  const el=document.querySelector(`[data-id="${id}"]`);
+  if(el) el.classList.add('drag-over');
+}
+function onDragEnd(){
+  document.querySelectorAll('.tl-tile').forEach(t=>{ t.classList.remove('drag-over'); t.classList.remove('dragging'); });
+  dragId=null; dragTier=null;
+}
+function onDrop(e,targetId,targetTier){
+  e.preventDefault();
+  document.querySelectorAll('.tl-tile').forEach(t=>{ t.classList.remove('drag-over'); t.classList.remove('dragging'); });
+  if(!dragId||dragId===targetId||dragTier!==targetTier) return;
+  // Reorder within the albums array
+  const dragAlbum=albums.find(a=>a.id===dragId);
+  if(!dragAlbum) return;
+  // Get tier order positions
+  const tierAlbums=albums.filter(a=>a.tier===dragTier);
+  const dIdx=tierAlbums.findIndex(a=>a.id===dragId);
+  const tIdx=tierAlbums.findIndex(a=>a.id===targetId);
+  // Remove drag item from albums, reinsert relative to target
+  albums=albums.filter(a=>a.id!==dragId);
+  const newTargetPos=albums.findIndex(a=>a.id===targetId);
+  albums.splice(dIdx<tIdx ? newTargetPos+1 : newTargetPos, 0, dragAlbum);
+  dragId=null; dragTier=null;
+  save(); render();
+}
+
+// ─────────────────────────────────────────────
 // RENDER: RANKINGS
 // ─────────────────────────────────────────────
-function albumTile(a){
+function albumTile(a,tier){
   const gc=a.tracks.filter(t=>t.isGreat).length;
-  return `<div class="tl-tile" onclick="openDetail('${a.id}')">
+  const t=tier||a.tier||'';
+  return `<div class="tl-tile" data-id="${a.id}" draggable="true"
+    ondragstart="onDragStart(event,'${a.id}','${esc(t)}')"
+    ondragover="onDragOver(event,'${a.id}')"
+    ondrop="onDrop(event,'${a.id}','${esc(t)}')"
+    ondragend="onDragEnd()"
+    onclick="openDetail('${a.id}')">
     <div class="tl-tile-name">${esc(a.name)}</div>
     <div>${a.artist||a.releaseYear?`<div class="tl-tile-meta">${esc(a.artist||'')}${a.releaseYear?' · '+esc(a.releaseYear):''}</div>`:''}${gc?`<div class="tl-tile-star">★ ${gc}</div>`:''}</div>
   </div>`;
@@ -492,11 +567,47 @@ function renderRankings(){
   if(!albums.length) return `<div class="empty"><span class="empty-icon">◈</span><div style="font-size:13px;">Add albums to start ranking.</div></div>`;
   const rows=TIERS.map(tier=>{
     const ta=albums.filter(a=>a.tier===tier);
-    return `<div class="tierlist-row"><div class="tierlist-label tl-lbl-${cls(tier)}">${esc(tier)}</div><div class="tierlist-items">${ta.length?ta.map(a=>albumTile(a)).join(''):'<span class="tl-empty">—</span>'}</div></div>`;
+    return `<div class="tierlist-row"><div class="tierlist-label tl-lbl-${cls(tier)}">${esc(tier)}</div><div class="tierlist-items">${ta.length?ta.map(a=>albumTile(a,tier)).join(''):'<span class="tl-empty">—</span>'}</div></div>`;
   }).join('');
   const un=albums.filter(a=>!a.tier);
-  const uS=un.length?`<div class="unranked-wrap"><div class="unranked-header"><span class="mono-label">Unranked</span><span style="font-size:11px;color:var(--fg3);">${un.length}</span></div><div class="unranked-tiles">${un.map(a=>albumTile(a)).join('')}</div></div>`:'';
+  const uS=un.length?`<div class="unranked-wrap"><div class="unranked-header"><span class="mono-label">Unranked</span><span style="font-size:11px;color:var(--fg3);">${un.length}</span></div><div class="unranked-tiles">${un.map(a=>albumTile(a,'')).join('')}</div></div>`:'';
   return `<div class="tierlist-wrap">${rows}</div>${uS}`;
+}
+
+// ─────────────────────────────────────────────
+// RENDER: BY YEAR
+// ─────────────────────────────────────────────
+function renderByYear(){
+  if(!albums.length) return `<div class="empty"><span class="empty-icon">◈</span><div style="font-size:13px;">No albums yet.</div></div>`;
+  // Group by year
+  const byYear={};
+  albums.forEach(a=>{
+    const y=a.releaseYear||'Unknown';
+    if(!byYear[y]) byYear[y]=[];
+    byYear[y].push(a);
+  });
+  // Sort years descending (Unknown at bottom)
+  const years=Object.keys(byYear).sort((a,b)=>{
+    if(a==='Unknown') return 1;
+    if(b==='Unknown') return -1;
+    return Number(b)-Number(a);
+  });
+  return years.map(year=>{
+    const list=[...byYear[year]].sort((a,b)=>tierRank(a.tier)-tierRank(b.tier));
+    const rows=list.map(a=>{
+      const gc=a.tracks.filter(t=>t.isGreat).length;
+      return `<tr onclick="openDetail('${a.id}')">
+        <td class="yt-rank">${tierBadge(a.tier)||'<span style="font-size:11px;color:var(--fg3)">—</span>'}</td>
+        <td class="yt-name">${esc(a.name)}</td>
+        <td class="yt-artist">${esc(a.artist||'')}</td>
+        <td class="yt-fav">${gc?`★ ${gc}`:''}</td>
+      </tr>`;
+    }).join('');
+    return `<div class="year-section">
+      <div class="year-heading">${esc(year)}</div>
+      <table class="year-table"><tbody>${rows}</tbody></table>
+    </div>`;
+  }).join('');
 }
 
 // ─────────────────────────────────────────────
