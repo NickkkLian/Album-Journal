@@ -23,7 +23,8 @@
   --err:  #c84040;
 
   --c-t0:#ff7070; --c-t1:#ffaa50; --c-t2:#ffe050;
-  --c-t3:#b0e050; --c-t4:#50d880; --c-t5:#50d0d8; --c-tr:#c070ff;
+  --c-t3:#b0e050; --c-t4:#50d880; --c-t5:#50d0d8;
+  --c-jp:#8090ff; --c-tr:#c070ff;
 
   --t0b:#280800; --t0f:#e07040; --t0r:#803010;
   --t1b:#241400; --t1f:#d48830; --t1r:#7a4e0a;
@@ -31,6 +32,7 @@
   --t3b:#101800; --t3f:#80b020; --t3r:#3a5808;
   --t4b:#001a08; --t4f:#40b060; --t4r:#0a5820;
   --t5b:#001820; --t5f:#30b0b8; --t5r:#085060;
+  --jpb:#080c28; --jpf:#6878e0; --jpr:#1a2068;
   --trb:#180820; --trf:#a060d8; --trr:#4a1878;
 }
 
@@ -89,6 +91,7 @@ textarea{resize:vertical;line-height:1.8;}
 .tb-T3{background:var(--t3b);color:var(--t3f);border:1px solid var(--t3r);}
 .tb-T4{background:var(--t4b);color:var(--t4f);border:1px solid var(--t4r);}
 .tb-T5{background:var(--t5b);color:var(--t5f);border:1px solid var(--t5r);}
+.tb-Just-Passed{background:var(--jpb);color:var(--jpf);border:1px solid var(--jpr);}
 .tb-Trash{background:var(--trb);color:var(--trf);border:1px solid var(--trr);}
 .tier-pills{display:flex;gap:6px;flex-wrap:wrap;}
 .tier-pill{background:transparent;border:1px solid var(--brd);color:var(--fg2);font-family:'DM Mono',monospace;font-size:11px;padding:4px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s;}
@@ -99,6 +102,7 @@ textarea{resize:vertical;line-height:1.8;}
 .tp-T3{background:var(--t3b);color:var(--t3f);border-color:var(--t3r);}
 .tp-T4{background:var(--t4b);color:var(--t4f);border-color:var(--t4r);}
 .tp-T5{background:var(--t5b);color:var(--t5f);border-color:var(--t5r);}
+.tp-Just-Passed{background:var(--jpb);color:var(--jpf);border-color:var(--jpr);}
 .tp-Trash{background:var(--trb);color:var(--trf);border-color:var(--trr);}
 
 /* tracks */
@@ -115,13 +119,15 @@ textarea{resize:vertical;line-height:1.8;}
 .tierlist-wrap{border:2px solid #2a2620;border-radius:6px;overflow:hidden;}
 .tierlist-row{display:flex;align-items:stretch;border-bottom:2px solid #2a2620;min-height:100px;}
 .tierlist-row:last-child{border-bottom:none;}
-.tierlist-label{width:88px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:2.2rem;letter-spacing:-0.02em;color:#111;text-shadow:0 1px 3px rgba(0,0,0,0.3);border-right:2px solid #2a2620;user-select:none;}
+.tierlist-label{width:88px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:2.2rem;letter-spacing:-0.02em;color:#111;text-shadow:0 1px 3px rgba(0,0,0,0.3);border-right:2px solid #2a2620;user-select:none;text-align:center;padding:4px 6px;line-height:1.1;}
+.tl-lbl-Just-Passed{font-size:0.85rem;letter-spacing:0;}
 .tl-lbl-T0{background:var(--c-t0);}
 .tl-lbl-T1{background:var(--c-t1);}
 .tl-lbl-T2{background:var(--c-t2);}
 .tl-lbl-T3{background:var(--c-t3);}
 .tl-lbl-T4{background:var(--c-t4);}
 .tl-lbl-T5{background:var(--c-t5);}
+.tl-lbl-Just-Passed{background:var(--c-jp);}
 .tl-lbl-Trash{background:var(--c-tr);color:#eee;text-shadow:0 1px 3px rgba(0,0,0,0.5);}
 .tierlist-items{flex:1;display:flex;flex-wrap:wrap;align-content:flex-start;gap:6px;padding:8px 10px;background:#111009;}
 .tl-tile{width:108px;min-height:80px;background:#1c1b18;border:1px solid #2e2b24;border-radius:4px;padding:8px;cursor:pointer;transition:background 0.15s,border-color 0.15s;display:flex;flex-direction:column;justify-content:space-between;gap:4px;}
@@ -193,8 +199,8 @@ let syncState = 'idle';
 let syncMsg   = 'Not set up';
 let syncTimer = null;
 
-const TIERS     = ['T0','T1','T2','T3','T4','T5','Trash'];
-const TIER_DESC = {T0:'Essential',T1:'Amazing',T2:'Great',T3:'Good',T4:'Decent',T5:'Okay',Trash:'Not for me'};
+const TIERS     = ['T0','T1','T2','T3','T4','T5','Just Passed','Trash'];
+const TIER_DESC = {T0:'Essential',T1:'Amazing',T2:'Great',T3:'Good',T4:'Decent',T5:'Okay','Just Passed':'Just passed',Trash:'Not for me'};
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 
@@ -315,11 +321,12 @@ function save(){ saveLocal(); schedulePush(); }
 // HELPERS
 // ─────────────────────────────────────────────
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function tierBadge(tier){ return tier?`<span class="tier-badge tb-${esc(tier)}">${esc(tier)}</span>`:''; }
+function cls(t){ return t.replace(/\s+/g,'-'); }
+function tierBadge(tier){ return tier?`<span class="tier-badge tb-${cls(tier)}">${esc(tier)}</span>`:''; }
 function tierPillsHTML(cur,fn,desc){
   return TIERS.map(t=>{
     const a=cur===t;
-    return `<button class="tier-pill${a?' tp-'+t:''}" onclick="${fn}('${t}')">${t}${desc?` <span style="font-size:10px;opacity:0.55">— ${TIER_DESC[t]}</span>`:''}</button>`;
+    return `<button class="tier-pill${a?' tp-'+cls(t):''}" onclick="${fn}('${esc(t)}')">${esc(t)}${desc?` <span style="font-size:10px;opacity:0.55">— ${TIER_DESC[t]}</span>`:''}</button>`;
   }).join('');
 }
 function syncPillHTML(){
@@ -485,7 +492,7 @@ function renderRankings(){
   if(!albums.length) return `<div class="empty"><span class="empty-icon">◈</span><div style="font-size:13px;">Add albums to start ranking.</div></div>`;
   const rows=TIERS.map(tier=>{
     const ta=albums.filter(a=>a.tier===tier);
-    return `<div class="tierlist-row"><div class="tierlist-label tl-lbl-${tier}">${tier}</div><div class="tierlist-items">${ta.length?ta.map(a=>albumTile(a)).join(''):'<span class="tl-empty">—</span>'}</div></div>`;
+    return `<div class="tierlist-row"><div class="tierlist-label tl-lbl-${cls(tier)}">${esc(tier)}</div><div class="tierlist-items">${ta.length?ta.map(a=>albumTile(a)).join(''):'<span class="tl-empty">—</span>'}</div></div>`;
   }).join('');
   const un=albums.filter(a=>!a.tier);
   const uS=un.length?`<div class="unranked-wrap"><div class="unranked-header"><span class="mono-label">Unranked</span><span style="font-size:11px;color:var(--fg3);">${un.length}</span></div><div class="unranked-tiles">${un.map(a=>albumTile(a)).join('')}</div></div>`:'';
