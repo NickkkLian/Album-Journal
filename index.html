@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Album Journal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,500;1,300;1,500&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:   #0e0d0b;
+  --s1:   #161512;
+  --s2:   #1f1e1a;
+  --s3:   #282620;
+  --fg:   #ece6d2;
+  --fg2:  #7d7565;
+  --fg3:  #3e3a30;
+  --brd:  #242018;
+  --brd2: #343028;
+  --acc:  #c89040;
+  --ok:   #50b870;
+  --err:  #c84040;
+
+  --c-t0:#ff7070; --c-t1:#ffaa50; --c-t2:#ffe050;
+  --c-t3:#b0e050; --c-t4:#50d880; --c-t5:#50d0d8; --c-tr:#c070ff;
+
+  --t0b:#280800; --t0f:#e07040; --t0r:#803010;
+  --t1b:#241400; --t1f:#d48830; --t1r:#7a4e0a;
+  --t2b:#201a00; --t2f:#c8a020; --t2r:#706000;
+  --t3b:#101800; --t3f:#80b020; --t3r:#3a5808;
+  --t4b:#001a08; --t4f:#40b060; --t4r:#0a5820;
+  --t5b:#001820; --t5f:#30b0b8; --t5r:#085060;
+  --trb:#180820; --trf:#a060d8; --trr:#4a1878;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{background:var(--bg);color:var(--fg);font-family:'DM Mono','Courier New',monospace;font-size:13px;line-height:1.65;min-height:100vh;}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.018) 3px,rgba(0,0,0,0.018) 4px);}
+#app{max-width:900px;margin:0 auto;padding:2.5rem 1.75rem 5rem;}
+
+.display{font-family:'Cormorant Garamond',Georgia,serif;font-weight:300;font-style:italic;font-size:2.4rem;letter-spacing:-0.01em;line-height:1.1;}
+.album-name-lg{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:2rem;letter-spacing:-0.02em;line-height:1.1;}
+.album-name{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:1.15rem;letter-spacing:-0.01em;line-height:1.2;}
+.mono-label{font-size:10px;text-transform:uppercase;letter-spacing:0.12em;color:var(--fg3);}
+
+input,textarea{background:var(--s1);border:1px solid var(--brd);color:var(--fg);font-family:'DM Mono',monospace;font-size:13px;padding:10px 14px;border-radius:4px;outline:none;width:100%;transition:border-color 0.2s;}
+input:focus,textarea:focus{border-color:var(--brd2);}
+input::placeholder,textarea::placeholder{color:var(--fg3);}
+textarea{resize:vertical;line-height:1.8;}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;transition:all 0.15s;border:none;line-height:1;white-space:nowrap;}
+.btn-primary{background:var(--fg);color:var(--bg);}
+.btn-primary:hover{background:#d8cfba;}
+.btn-ghost{background:transparent;color:var(--fg2);border:1px solid var(--brd);}
+.btn-ghost:hover{border-color:var(--brd2);color:var(--fg);}
+.btn-danger{background:transparent;color:var(--err);border:1px solid #5a1010;font-size:11px;padding:6px 14px;}
+.btn-danger:hover{background:#200808;}
+.back-btn{background:transparent;border:none;color:var(--fg2);cursor:pointer;font-size:20px;padding:0;line-height:1;transition:color 0.15s;}
+.back-btn:hover{color:var(--fg);}
+.icon-btn{background:transparent;border:1px solid var(--brd);color:var(--fg3);cursor:pointer;font-size:14px;padding:5px 10px;border-radius:3px;transition:all 0.15s;font-family:'DM Mono',monospace;line-height:1;}
+.icon-btn:hover{border-color:var(--brd2);color:var(--fg2);}
+
+/* tab bar */
+.tab-bar{display:flex;align-items:center;border-bottom:1px solid var(--brd);margin-bottom:2rem;}
+.tab-btn{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--fg3);font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.12em;padding:10px 20px;cursor:pointer;margin-bottom:-1px;transition:all 0.15s;}
+.tab-btn.active{border-bottom-color:var(--acc);color:var(--fg);}
+.tab-btn:hover:not(.active){color:var(--fg2);}
+
+/* sync pill */
+.sync-pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;padding:5px 10px;border-radius:3px;border:1px solid var(--brd);color:var(--fg3);cursor:default;transition:all 0.2s;}
+.sync-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.sync-idle   .sync-dot{background:var(--fg3);}
+.sync-busy   .sync-dot{background:var(--acc);animation:pulse 1s infinite;}
+.sync-ok     .sync-dot{background:var(--ok);}  .sync-ok{border-color:#1a5030;color:var(--ok);}
+.sync-error  .sync-dot{background:var(--err);} .sync-error{border-color:#5a1010;color:var(--err);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* collection */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;}
+.album-card{background:var(--s1);border:1px solid var(--brd);border-radius:6px;padding:16px;cursor:pointer;transition:border-color 0.15s,background 0.15s;}
+.album-card:hover{border-color:var(--brd2);background:var(--s2);}
+
+/* badges & pills */
+.tier-badge{display:inline-block;font-size:10px;letter-spacing:0.06em;padding:2px 8px;border-radius:3px;white-space:nowrap;flex-shrink:0;}
+.tb-T0{background:var(--t0b);color:var(--t0f);border:1px solid var(--t0r);}
+.tb-T1{background:var(--t1b);color:var(--t1f);border:1px solid var(--t1r);}
+.tb-T2{background:var(--t2b);color:var(--t2f);border:1px solid var(--t2r);}
+.tb-T3{background:var(--t3b);color:var(--t3f);border:1px solid var(--t3r);}
+.tb-T4{background:var(--t4b);color:var(--t4f);border:1px solid var(--t4r);}
+.tb-T5{background:var(--t5b);color:var(--t5f);border:1px solid var(--t5r);}
+.tb-Trash{background:var(--trb);color:var(--trf);border:1px solid var(--trr);}
+.tier-pills{display:flex;gap:6px;flex-wrap:wrap;}
+.tier-pill{background:transparent;border:1px solid var(--brd);color:var(--fg2);font-family:'DM Mono',monospace;font-size:11px;padding:4px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s;}
+.tier-pill:hover{border-color:var(--brd2);color:var(--fg);}
+.tp-T0{background:var(--t0b);color:var(--t0f);border-color:var(--t0r);}
+.tp-T1{background:var(--t1b);color:var(--t1f);border-color:var(--t1r);}
+.tp-T2{background:var(--t2b);color:var(--t2f);border-color:var(--t2r);}
+.tp-T3{background:var(--t3b);color:var(--t3f);border-color:var(--t3r);}
+.tp-T4{background:var(--t4b);color:var(--t4f);border-color:var(--t4r);}
+.tp-T5{background:var(--t5b);color:var(--t5f);border-color:var(--t5r);}
+.tp-Trash{background:var(--trb);color:var(--trf);border-color:var(--trr);}
+
+/* tracks */
+.track-row{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:4px;cursor:pointer;transition:background 0.1s;}
+.track-row:hover{background:var(--s2);}
+.track-row.great{background:rgba(200,144,64,0.07);}
+.track-row.great:hover{background:rgba(200,144,64,0.13);}
+.track-num{font-size:11px;color:var(--fg3);min-width:22px;font-variant-numeric:tabular-nums;}
+.track-name{flex:1;font-size:13px;}
+.track-row.great .track-name{color:var(--acc);}
+.star{color:var(--acc);font-size:12px;flex-shrink:0;}
+
+/* tier list */
+.tierlist-wrap{border:2px solid #2a2620;border-radius:6px;overflow:hidden;}
+.tierlist-row{display:flex;align-items:stretch;border-bottom:2px solid #2a2620;min-height:100px;}
+.tierlist-row:last-child{border-bottom:none;}
+.tierlist-label{width:88px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:2.2rem;letter-spacing:-0.02em;color:#111;text-shadow:0 1px 3px rgba(0,0,0,0.3);border-right:2px solid #2a2620;user-select:none;}
+.tl-lbl-T0{background:var(--c-t0);}
+.tl-lbl-T1{background:var(--c-t1);}
+.tl-lbl-T2{background:var(--c-t2);}
+.tl-lbl-T3{background:var(--c-t3);}
+.tl-lbl-T4{background:var(--c-t4);}
+.tl-lbl-T5{background:var(--c-t5);}
+.tl-lbl-Trash{background:var(--c-tr);color:#eee;text-shadow:0 1px 3px rgba(0,0,0,0.5);}
+.tierlist-items{flex:1;display:flex;flex-wrap:wrap;align-content:flex-start;gap:6px;padding:8px 10px;background:#111009;}
+.tl-tile{width:108px;min-height:80px;background:#1c1b18;border:1px solid #2e2b24;border-radius:4px;padding:8px;cursor:pointer;transition:background 0.15s,border-color 0.15s;display:flex;flex-direction:column;justify-content:space-between;gap:4px;}
+.tl-tile:hover{background:#262420;border-color:#46423a;}
+.tl-tile-name{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:0.82rem;line-height:1.2;color:var(--fg);overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;}
+.tl-tile-meta{font-size:9px;color:#504840;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tl-tile-star{font-size:9px;color:var(--acc);}
+.tl-empty{padding:10px 16px;font-size:11px;color:var(--fg3);font-style:italic;align-self:center;}
+.unranked-wrap{margin-top:1.5rem;}
+.unranked-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--brd);}
+.unranked-tiles{display:flex;flex-wrap:wrap;gap:6px;}
+
+/* settings */
+.callout{background:var(--s1);border:1px solid var(--brd);border-left:3px solid var(--acc);border-radius:4px;padding:14px 16px;font-size:12px;color:var(--fg2);line-height:1.8;}
+.callout a{color:var(--acc);text-decoration:none;}
+.callout a:hover{text-decoration:underline;}
+.callout code{background:var(--s2);padding:1px 5px;border-radius:2px;font-size:11px;color:var(--fg);}
+.s-row{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.s-row label{font-size:11px;color:var(--fg3);width:80px;flex-shrink:0;}
+.s-row input{flex:1;}
+.test-result{font-size:12px;padding:8px 12px;border-radius:4px;margin-top:10px;display:none;}
+.test-ok{background:var(--t4b);color:var(--ok);border:1px solid var(--t4r);display:block;}
+.test-err{background:var(--t0b);color:var(--err);border:1px solid var(--t0r);display:block;}
+
+/* onboarding */
+.onboard-step{display:flex;gap:14px;margin-bottom:1.25rem;}
+.onboard-num{width:24px;height:24px;border-radius:50%;background:var(--s3);border:1px solid var(--brd2);color:var(--fg2);font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.onboard-text{font-size:12px;color:var(--fg2);line-height:1.7;}
+.onboard-text a{color:var(--acc);text-decoration:none;}
+.onboard-text a:hover{text-decoration:underline;}
+.onboard-text code{background:var(--s2);padding:1px 5px;border-radius:2px;font-size:11px;color:var(--fg);}
+
+/* misc */
+.field{margin-bottom:1.25rem;}
+.field>label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.12em;color:var(--fg3);margin-bottom:6px;}
+.meta-chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.chip{font-size:11px;color:var(--fg3);}
+.divider{height:1px;background:var(--brd);margin:1.5rem 0;}
+.empty{text-align:center;padding:4rem 1rem;color:var(--fg3);}
+.empty-icon{font-size:2.5rem;display:block;margin-bottom:1rem;opacity:0.35;}
+.search-wrap{position:relative;margin-bottom:1.5rem;}
+.search-wrap input{padding-left:36px;}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--fg3);pointer-events:none;font-size:14px;}
+.link-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--brd);border-radius:4px;font-size:12px;color:var(--fg2);text-decoration:none;margin-bottom:1.5rem;transition:border-color 0.15s,color 0.15s;}
+.link-btn:hover{border-color:var(--brd2);color:var(--fg);}
+
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:3px;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let albums    = [];
+let view      = 'main';
+let activeTab = 'collection';
+let search    = '';
+let detailId  = null;
+let addStep   = 1;
+let addForm   = {name:'',artist:'',year:'',genre:'',link:'',tier:'',tracksText:'',great:[]};
+
+let ghConfig  = {token:'',owner:'',repo:'',path:'albums.json'};
+let ghSha     = null;
+let syncState = 'idle';
+let syncMsg   = 'Not set up';
+let syncTimer = null;
+
+const TIERS     = ['T0','T1','T2','T3','T4','T5','Trash'];
+const TIER_DESC = {T0:'Essential',T1:'Amazing',T2:'Great',T3:'Good',T4:'Decent',T5:'Okay',Trash:'Not for me'};
+
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+// ─────────────────────────────────────────────
+// STORAGE
+// ─────────────────────────────────────────────
+function loadLocal(){ try{const s=localStorage.getItem('alj-data');if(s)albums=JSON.parse(s);}catch(e){} }
+function saveLocal(){ try{localStorage.setItem('alj-data',JSON.stringify(albums));}catch(e){} }
+function loadGHConfig(){ try{const s=localStorage.getItem('alj-gh');if(s)ghConfig={...ghConfig,...JSON.parse(s)};}catch(e){} }
+function saveGHConfig(){ localStorage.setItem('alj-gh',JSON.stringify(ghConfig)); }
+function ghReady(){ return !!(ghConfig.token&&ghConfig.owner&&ghConfig.repo&&ghConfig.path); }
+
+// ─────────────────────────────────────────────
+// GITHUB API
+// ─────────────────────────────────────────────
+function b64enc(str){
+  // handles unicode (Chinese, etc.)
+  return btoa(new TextEncoder().encode(str).reduce((s,b)=>s+String.fromCharCode(b),''));
+}
+function b64dec(b64){
+  const bytes=Uint8Array.from(atob(b64.replace(/\n/g,'')),c=>c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+function ghH(){
+  return {'Authorization':`Bearer ${ghConfig.token}`,'Accept':'application/vnd.github+json','Content-Type':'application/json','X-GitHub-Api-Version':'2022-11-28'};
+}
+function ghURL(){
+  return `https://api.github.com/repos/${ghConfig.owner}/${ghConfig.repo}/contents/${ghConfig.path}`;
+}
+
+async function ghLoad(){
+  if(!ghReady()) return;
+  setSync('busy','Loading…');
+  try{
+    const res=await fetch(ghURL(),{headers:ghH()});
+    if(res.status===404){ setSync('ok','Connected — will create file on first save'); ghSha=null; return; }
+    if(!res.ok) throw new Error(`${res.status} ${(await res.json()).message}`);
+    const d=await res.json();
+    ghSha=d.sha;
+    albums=JSON.parse(b64dec(d.content));
+    saveLocal();
+    setSync('ok',`Loaded — ${albums.length} albums`);
+    render();
+  }catch(e){
+    setSync('error',`Load failed: ${e.message}`);
+  }
+}
+
+async function ghPush(){
+  if(!ghReady()) return;
+  setSync('busy','Syncing…');
+  const body={message:`album-journal sync ${new Date().toISOString().slice(0,16).replace('T',' ')}`,content:b64enc(JSON.stringify(albums,null,2))};
+  if(ghSha) body.sha=ghSha;
+  try{
+    const res=await fetch(ghURL(),{method:'PUT',headers:ghH(),body:JSON.stringify(body)});
+    if(!res.ok){
+      const err=await res.json();
+      // SHA conflict — fetch current and retry once
+      if(res.status===409||res.status===422){
+        const cur=await fetch(ghURL(),{headers:ghH()});
+        if(cur.ok){ghSha=(await cur.json()).sha;await ghPush();return;}
+      }
+      throw new Error(`${res.status} ${err.message}`);
+    }
+    const d=await res.json();
+    ghSha=d.content.sha;
+    const t=new Date();
+    setSync('ok',`Synced ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`);
+  }catch(e){
+    setSync('error',`Sync failed: ${e.message}`);
+  }
+}
+
+async function ghTest(){
+  const el=document.getElementById('test-result');
+  if(!el) return;
+  // read current form values
+  ghConfig.token=document.getElementById('s-token')?.value||ghConfig.token;
+  ghConfig.owner=document.getElementById('s-owner')?.value||ghConfig.owner;
+  ghConfig.repo=document.getElementById('s-repo')?.value||ghConfig.repo;
+  ghConfig.path=document.getElementById('s-path')?.value||ghConfig.path;
+  el.className='test-result';el.textContent='Testing…';el.style.display='block';
+  try{
+    const res=await fetch(`https://api.github.com/repos/${ghConfig.owner}/${ghConfig.repo}`,{headers:ghH()});
+    if(!res.ok) throw new Error(`${res.status}: ${(await res.json()).message}`);
+    const d=await res.json();
+    el.className='test-result test-ok';
+    el.textContent=`✓ Connected to "${d.full_name}" (${d.private?'private':'public'})`;
+  }catch(e){
+    el.className='test-result test-err';
+    el.textContent=`✗ ${e.message}`;
+  }
+}
+
+function schedulePush(){
+  clearTimeout(syncTimer);
+  if(!ghReady()){ return; }
+  setSync('busy','Pending…');
+  syncTimer=setTimeout(ghPush,2500);
+}
+
+function setSync(state,msg){
+  syncState=state; syncMsg=msg;
+  const el=document.getElementById('sync-pill');
+  if(el){
+    el.className=`sync-pill sync-${state}`;
+    el.innerHTML=`<span class="sync-dot"></span>${esc(msg)}`;
+    el.title=msg;
+  }
+}
+
+// ─────────────────────────────────────────────
+// SAVE
+// ─────────────────────────────────────────────
+function save(){ saveLocal(); schedulePush(); }
+
+// ─────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function tierBadge(tier){ return tier?`<span class="tier-badge tb-${esc(tier)}">${esc(tier)}</span>`:''; }
+function tierPillsHTML(cur,fn,desc){
+  return TIERS.map(t=>{
+    const a=cur===t;
+    return `<button class="tier-pill${a?' tp-'+t:''}" onclick="${fn}('${t}')">${t}${desc?` <span style="font-size:10px;opacity:0.55">— ${TIER_DESC[t]}</span>`:''}</button>`;
+  }).join('');
+}
+function syncPillHTML(){
+  return `<div id="sync-pill" class="sync-pill sync-${syncState}" title="${esc(syncMsg)}"><span class="sync-dot"></span>${esc(syncMsg)}</div>`;
+}
+
+// ─────────────────────────────────────────────
+// RENDER: MAIN
+// ─────────────────────────────────────────────
+function renderMain(){
+  const f=search.trim();
+  const filtered=f?albums.filter(a=>
+    a.name.toLowerCase().includes(f.toLowerCase())||
+    (a.artist||'').toLowerCase().includes(f.toLowerCase())||
+    (a.genre||'').toLowerCase().includes(f.toLowerCase())):albums;
+  return `
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:2rem;gap:16px;flex-wrap:wrap;">
+      <div>
+        <div class="display">Album Journal</div>
+        <div style="font-size:11px;color:var(--fg3);margin-top:6px;letter-spacing:0.06em;">${albums.length} ${albums.length===1?'record':'records'} logged</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        ${syncPillHTML()}
+        <button class="icon-btn" onclick="view='settings';render()" title="Sync settings">⚙</button>
+        <button class="btn btn-primary" onclick="startAdd()">+ Add album</button>
+      </div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab-btn${activeTab==='collection'?' active':''}" onclick="setTab('collection')">Collection</button>
+      <button class="tab-btn${activeTab==='rankings'?' active':''}" onclick="setTab('rankings')">Rankings</button>
+    </div>
+    ${activeTab==='collection'?renderCollection(filtered):renderRankings()}`;
+}
+
+// ─────────────────────────────────────────────
+// RENDER: SETTINGS
+// ─────────────────────────────────────────────
+function renderSettings(){
+  const c=ghConfig;
+  const isNew=!c.token;
+  return `
+    <div style="max-width:580px;margin:0 auto;">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:2rem;">
+        <button class="back-btn" onclick="view='main';render()">←</button>
+        <div class="display" style="font-size:1.7rem;">GitHub sync</div>
+      </div>
+
+      ${isNew?`
+      <div style="margin-bottom:2rem;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.12em;color:var(--fg3);margin-bottom:1rem;">First-time setup</div>
+        <div class="onboard-step">
+          <div class="onboard-num">1</div>
+          <div class="onboard-text">
+            Create a <strong>private</strong> GitHub repo for your data — e.g. <code>album-data</code>. This is separate from the repo hosting this page.
+          </div>
+        </div>
+        <div class="onboard-step">
+          <div class="onboard-num">2</div>
+          <div class="onboard-text">
+            Go to <a href="https://github.com/settings/personal-access-tokens/new" target="_blank">Settings → Personal access tokens → Fine-grained</a> and create a token with:<br>
+            · <em>Repository access</em> → your <code>album-data</code> repo only<br>
+            · <em>Permissions → Contents</em> → <strong>Read and write</strong>
+          </div>
+        </div>
+        <div class="onboard-step">
+          <div class="onboard-num">3</div>
+          <div class="onboard-text">
+            Paste the token below. It's saved only in <em>this browser's</em> localStorage — repeat this step on each device you use.
+          </div>
+        </div>
+      </div>`:`
+      <div style="font-size:12px;color:var(--fg3);margin-bottom:1.5rem;">
+        Token is stored in this browser's localStorage only. Repeat setup on each device.
+      </div>`}
+
+      <div style="background:var(--s1);border:1px solid var(--brd);border-radius:6px;padding:1.25rem;margin-bottom:1.25rem;">
+        <div class="s-row"><label>Token</label><input type="password" id="s-token" placeholder="github_pat_…" value="${esc(c.token)}" oninput="ghConfig.token=this.value"></div>
+        <div class="s-row"><label>Owner</label><input type="text" id="s-owner" placeholder="your-username" value="${esc(c.owner)}" oninput="ghConfig.owner=this.value"></div>
+        <div class="s-row"><label>Repo</label><input type="text" id="s-repo" placeholder="album-data" value="${esc(c.repo)}" oninput="ghConfig.repo=this.value"></div>
+        <div class="s-row" style="margin-bottom:0;"><label>File path</label><input type="text" id="s-path" placeholder="albums.json" value="${esc(c.path)}" oninput="ghConfig.path=this.value"></div>
+      </div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+        <button class="btn btn-ghost" onclick="ghTest()">Test connection</button>
+        <button class="btn btn-primary" onclick="saveSettings()">Save &amp; sync now</button>
+        ${!isNew?`<button class="btn btn-danger" onclick="clearSettings()">Disconnect</button>`:''}
+      </div>
+      <div id="test-result" class="test-result"></div>
+
+      ${!isNew?`
+      <div class="divider"></div>
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.12em;color:var(--fg3);margin-bottom:10px;">Manual controls</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-ghost" onclick="ghLoad()">↓ Pull from GitHub</button>
+        <button class="btn btn-ghost" onclick="ghPush()">↑ Push to GitHub</button>
+      </div>
+      <div style="font-size:11px;color:var(--fg3);margin-top:8px;">Pull overwrites local data with the repo version.</div>
+      `:''}
+    </div>`;
+}
+
+function saveSettings(){
+  // Read latest values from inputs
+  ghConfig.token=document.getElementById('s-token')?.value||ghConfig.token;
+  ghConfig.owner=document.getElementById('s-owner')?.value||ghConfig.owner;
+  ghConfig.repo=document.getElementById('s-repo')?.value||ghConfig.repo;
+  ghConfig.path=document.getElementById('s-path')?.value||ghConfig.path;
+  saveGHConfig();
+  view='main';
+  render();
+  ghLoad();
+}
+
+function clearSettings(){
+  if(!confirm('Disconnect GitHub? Local data stays intact.')) return;
+  ghConfig={token:'',owner:'',repo:'',path:'albums.json'};
+  ghSha=null;
+  saveGHConfig();
+  setSyncState('idle','Not set up');
+  render();
+}
+function setSyncState(s,m){ syncState=s; syncMsg=m; }
+
+// ─────────────────────────────────────────────
+// RENDER: COLLECTION
+// ─────────────────────────────────────────────
+function renderCollection(filtered){
+  const sb=albums.length>4?`<div class="search-wrap"><span class="search-icon">⌕</span><input type="search" placeholder="Search title, artist, genre…" value="${esc(search)}" oninput="search=this.value;document.getElementById('grid-area').innerHTML=getCollectionGrid()"></div>`:'';
+  return sb+`<div id="grid-area">${getCollectionGrid(filtered)}</div>`;
+}
+function getCollectionGrid(filtered){
+  const f=search.trim();
+  const list=filtered!==undefined?filtered:(f?albums.filter(a=>a.name.toLowerCase().includes(f.toLowerCase())||(a.artist||'').toLowerCase().includes(f.toLowerCase())||(a.genre||'').toLowerCase().includes(f.toLowerCase())):albums);
+  if(!list.length) return `<div class="empty"><span class="empty-icon">♪</span><div style="font-size:13px;">${albums.length===0?'No albums yet.':'No results.'}</div><div style="font-size:11px;margin-top:6px;color:var(--fg3);">${albums.length===0?'Hit "+ Add album" above.':'Try a different search.'}</div></div>`;
+  return `<div class="card-grid">${list.map(a=>{
+    const gc=a.tracks.filter(t=>t.isGreat).length;
+    return `<div class="album-card" onclick="openDetail('${a.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;">
+        <div style="min-width:0;flex:1;"><div class="album-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(a.name)}</div><div style="font-size:11px;color:var(--fg2);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(a.artist||'—')}</div></div>
+        ${tierBadge(a.tier)}
+      </div>
+      <div class="meta-chips">
+        ${a.releaseYear?`<span class="chip">${esc(a.releaseYear)}</span>`:''}
+        ${a.genre?`<span class="chip">${a.releaseYear?'·':''} ${esc(a.genre)}</span>`:''}
+        ${a.tracks.length?`<span class="chip">· ${a.tracks.length}t</span>`:''}
+        ${gc?`<span class="chip" style="color:var(--acc);">★ ${gc}</span>`:''}
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// ─────────────────────────────────────────────
+// RENDER: RANKINGS
+// ─────────────────────────────────────────────
+function albumTile(a){
+  const gc=a.tracks.filter(t=>t.isGreat).length;
+  return `<div class="tl-tile" onclick="openDetail('${a.id}')">
+    <div class="tl-tile-name">${esc(a.name)}</div>
+    <div>${a.artist||a.releaseYear?`<div class="tl-tile-meta">${esc(a.artist||'')}${a.releaseYear?' · '+esc(a.releaseYear):''}</div>`:''}${gc?`<div class="tl-tile-star">★ ${gc}</div>`:''}</div>
+  </div>`;
+}
+function renderRankings(){
+  if(!albums.length) return `<div class="empty"><span class="empty-icon">◈</span><div style="font-size:13px;">Add albums to start ranking.</div></div>`;
+  const rows=TIERS.map(tier=>{
+    const ta=albums.filter(a=>a.tier===tier);
+    return `<div class="tierlist-row"><div class="tierlist-label tl-lbl-${tier}">${tier}</div><div class="tierlist-items">${ta.length?ta.map(a=>albumTile(a)).join(''):'<span class="tl-empty">—</span>'}</div></div>`;
+  }).join('');
+  const un=albums.filter(a=>!a.tier);
+  const uS=un.length?`<div class="unranked-wrap"><div class="unranked-header"><span class="mono-label">Unranked</span><span style="font-size:11px;color:var(--fg3);">${un.length}</span></div><div class="unranked-tiles">${un.map(a=>albumTile(a)).join('')}</div></div>`:'';
+  return `<div class="tierlist-wrap">${rows}</div>${uS}`;
+}
+
+// ─────────────────────────────────────────────
+// RENDER: ADD FORM
+// ─────────────────────────────────────────────
+function renderAddForm(){
+  return `<div style="max-width:520px;margin:0 auto;">
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:2.5rem;">
+      <button class="back-btn" onclick="cancelAdd()">←</button>
+      <div class="display" style="font-size:1.7rem;">Add album</div>
+      <div class="mono-label" style="margin-left:auto;">Step ${addStep} / 2</div>
+    </div>
+    ${addStep===1?renderStep1():renderStep2()}
+  </div>`;
+}
+function renderStep1(){
+  return `
+    <div class="field"><label>Album name *</label><input id="f-name" type="text" placeholder="e.g. OK Computer" value="${esc(addForm.name)}" oninput="addForm.name=this.value"></div>
+    <div class="field"><label>Artist</label><input type="text" placeholder="e.g. Radiohead" value="${esc(addForm.artist)}" oninput="addForm.artist=this.value"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="field"><label>Release year</label><input type="text" placeholder="1997" value="${esc(addForm.year)}" oninput="addForm.year=this.value"></div>
+      <div class="field"><label>Genre</label><input type="text" placeholder="Art rock" value="${esc(addForm.genre)}" oninput="addForm.genre=this.value"></div>
+    </div>
+    <div class="field"><label>NetEase / QQ Music link</label><input type="url" placeholder="https://music.163.com/album?id=…" value="${esc(addForm.link)}" oninput="addForm.link=this.value"></div>
+    <div class="field"><label>Tier (optional)</label><div class="tier-pills">${tierPillsHTML(addForm.tier,'toggleAddTier',false)}</div></div>
+    <div style="margin-top:1.5rem;"><button class="btn btn-primary" onclick="goStep2()" style="width:100%;">Next — add tracks →</button></div>`;
+}
+function renderStep2(){
+  const tl=addForm.tracksText.split('\n').map(t=>t.trim()).filter(Boolean);
+  return `
+    <div class="field"><label>Tracklist — one track per line</label><textarea id="f-tracks" rows="10" placeholder="Airbag&#10;Paranoid Android&#10;Subterranean Homesick Alien&#10;…" oninput="onTracksInput(this.value)">${esc(addForm.tracksText)}</textarea></div>
+    <div id="fav-section" style="${tl.length?'':'display:none'}">
+      <div class="field" style="margin-top:0.5rem;"><label>★ Click tracks to mark favourites</label><div id="track-list-add" style="margin-top:6px;">${buildTrackListAdd(tl)}</div></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:1.5rem;">
+      <button class="btn btn-ghost" onclick="addStep=1;render()" style="min-width:110px;">← Back</button>
+      <button class="btn btn-primary" onclick="saveAlbum()" style="flex:1;">Save album</button>
+    </div>`;
+}
+function buildTrackListAdd(tl){
+  return tl.map((t,i)=>{const g=addForm.great.includes(i);return `<div class="track-row${g?' great':''}" onclick="toggleGreatAdd(${i})"><span class="track-num">${String(i+1).padStart(2,'0')}</span><span class="track-name">${esc(t)}</span>${g?'<span class="star">★</span>':''}</div>`;}).join('');
+}
+
+// ─────────────────────────────────────────────
+// RENDER: DETAIL
+// ─────────────────────────────────────────────
+function renderDetail(){
+  const a=albums.find(x=>x.id===detailId);
+  if(!a){view='main';render();return '';}
+  const gc=a.tracks.filter(t=>t.isGreat).length;
+  return `<div style="max-width:520px;margin:0 auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;">
+      <button class="back-btn" onclick="view='main';render()">←</button>
+      <button class="btn btn-danger" onclick="deleteAlbum('${a.id}')">Delete</button>
+    </div>
+    <div class="album-name-lg" style="margin-bottom:6px;">${esc(a.name)}</div>
+    ${a.artist?`<div style="font-size:15px;color:var(--fg2);margin-bottom:10px;">${esc(a.artist)}</div>`:''}
+    <div class="meta-chips" style="margin-bottom:1.5rem;" id="meta-chips">
+      ${a.releaseYear?`<span class="chip">${esc(a.releaseYear)}</span>`:''}
+      ${a.genre?`<span class="chip">${a.releaseYear?'·':''} ${esc(a.genre)}</span>`:''}
+      ${a.tracks.length?`<span class="chip">· ${a.tracks.length} tracks</span>`:''}
+      ${gc?`<span class="chip" style="color:var(--acc);" id="gc-chip">· ★ ${gc} fav${gc!==1?'s':''}</span>`:''}
+    </div>
+    ${a.link?`<a href="${esc(a.link)}" target="_blank" rel="noreferrer" class="link-btn">↗ Open in music app</a>`:''}
+    <div class="divider"></div>
+    <div class="field"><label>Tier</label><div class="tier-pills" id="detail-tier-pills">${tierPillsHTML(a.tier||'','setDetailTier',true)}</div></div>
+    <div class="divider"></div>
+    ${a.tracks.length?`<div><div class="mono-label" style="margin-bottom:10px;">Tracklist — click to toggle favourites</div><div id="detail-tracks">${a.tracks.map((t,i)=>`<div class="track-row${t.isGreat?' great':''}" onclick="toggleGreatDetail('${t.id}')"><span class="track-num">${String(i+1).padStart(2,'0')}</span><span class="track-name">${esc(t.name)}</span>${t.isGreat?'<span class="star">★</span>':''}</div>`).join('')}</div></div>`:`<div style="font-size:12px;color:var(--fg3);font-style:italic;">No tracks recorded.</div>`}
+  </div>`;
+}
+
+// ─────────────────────────────────────────────
+// ACTIONS
+// ─────────────────────────────────────────────
+function render(){
+  const app=document.getElementById('app');
+  if(view==='main')          app.innerHTML=renderMain();
+  else if(view==='settings') app.innerHTML=renderSettings();
+  else if(view==='add')      app.innerHTML=renderAddForm();
+  else if(view==='detail')   app.innerHTML=renderDetail();
+  if(view==='add'&&addStep===1){const el=document.getElementById('f-name');if(el)setTimeout(()=>el.focus(),50);}
+}
+
+function setTab(t){activeTab=t;render();}
+function startAdd(){addStep=1;addForm={name:'',artist:'',year:'',genre:'',link:'',tier:'',tracksText:'',great:[]};view='add';render();}
+function cancelAdd(){view='main';render();}
+function toggleAddTier(t){addForm.tier=addForm.tier===t?'':t;const p=document.querySelector('.tier-pills');if(p)p.innerHTML=tierPillsHTML(addForm.tier,'toggleAddTier',false);}
+function goStep2(){if(!addForm.name.trim())return;addStep=2;render();}
+function onTracksInput(v){
+  addForm.tracksText=v;
+  const tl=v.split('\n').map(s=>s.trim()).filter(Boolean);
+  addForm.great=addForm.great.filter(i=>i<tl.length);
+  const c=document.getElementById('track-list-add');const s=document.getElementById('fav-section');
+  if(c)c.innerHTML=buildTrackListAdd(tl);if(s)s.style.display=tl.length?'':'none';
+}
+function toggleGreatAdd(i){
+  const idx=addForm.great.indexOf(i);if(idx>=0)addForm.great.splice(idx,1);else addForm.great.push(i);
+  const c=document.getElementById('track-list-add');
+  if(c){const tl=addForm.tracksText.split('\n').map(s=>s.trim()).filter(Boolean);c.innerHTML=buildTrackListAdd(tl);}
+}
+function saveAlbum(){
+  if(!addForm.name.trim())return;
+  const tl=addForm.tracksText.split('\n').map(s=>s.trim()).filter(Boolean);
+  albums.unshift({id:uid(),name:addForm.name.trim(),artist:addForm.artist.trim(),releaseYear:addForm.year.trim(),genre:addForm.genre.trim(),link:addForm.link.trim(),tracks:tl.map((t,i)=>({id:uid(),name:t,isGreat:addForm.great.includes(i)})),tier:addForm.tier||null,addedAt:Date.now()});
+  save();view='main';render();
+}
+function openDetail(id){detailId=id;view='detail';render();}
+function setDetailTier(t){
+  const a=albums.find(x=>x.id===detailId);if(!a)return;
+  a.tier=a.tier===t?null:t;save();
+  const p=document.getElementById('detail-tier-pills');if(p)p.innerHTML=tierPillsHTML(a.tier||'','setDetailTier',true);
+}
+function toggleGreatDetail(trackId){
+  const a=albums.find(x=>x.id===detailId);if(!a)return;
+  const t=a.tracks.find(x=>x.id===trackId);if(!t)return;
+  t.isGreat=!t.isGreat;save();
+  const c=document.getElementById('detail-tracks');
+  if(c)c.innerHTML=a.tracks.map((tk,i)=>`<div class="track-row${tk.isGreat?' great':''}" onclick="toggleGreatDetail('${tk.id}')"><span class="track-num">${String(i+1).padStart(2,'0')}</span><span class="track-name">${esc(tk.name)}</span>${tk.isGreat?'<span class="star">★</span>':''}</div>`).join('');
+  const gc=a.tracks.filter(t=>t.isGreat).length;
+  let chip=document.getElementById('gc-chip');const meta=document.getElementById('meta-chips');
+  if(gc){if(!chip&&meta){chip=document.createElement('span');chip.id='gc-chip';chip.className='chip';chip.style.color='var(--acc)';meta.appendChild(chip);}if(chip)chip.textContent=`· ★ ${gc} fav${gc!==1?'s':''}`;}
+  else{if(chip)chip.remove();}
+}
+function deleteAlbum(id){
+  if(!confirm('Remove this album?'))return;
+  albums=albums.filter(a=>a.id!==id);save();view='main';render();
+}
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+loadLocal();
+loadGHConfig();
+
+if(ghReady()){
+  syncMsg='Connecting…';
+  render();
+  ghLoad();
+}else{
+  // First visit or not configured — go straight to settings
+  view='settings';
+  render();
+}
+</script>
+</body>
+</html>
