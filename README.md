@@ -10,8 +10,6 @@ live at: `https://your-name.github.io/album-journal`
 
 single html file hosted on github pages. album data gets auto-saved to a separate private repo as a json file every time you make a change. works across devices as long as you set up the token on each one.
 
-no frameworks, no backend, no accounts.
-
 ---
 
 ## setup
