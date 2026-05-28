@@ -369,15 +369,16 @@ function syncPillHTML(){
 // ─────────────────────────────────────────────
 function renderMain(){
   const f=search.trim();
-  const filtered=f?albums.filter(a=>
+  const filtered=f?albums.filter(a=>!a.shelved&&(
     a.name.toLowerCase().includes(f.toLowerCase())||
     (a.artist||'').toLowerCase().includes(f.toLowerCase())||
-    (a.genre||'').toLowerCase().includes(f.toLowerCase())):albums;
+    (a.genre||'').toLowerCase().includes(f.toLowerCase()))):albums.filter(a=>!a.shelved);
+  const activeCount=albums.filter(a=>!a.shelved).length;
   return `
     <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:2rem;gap:16px;flex-wrap:wrap;">
       <div>
         <div class="display">Album Journal</div>
-        <div style="font-size:11px;color:var(--fg3);margin-top:6px;letter-spacing:0.06em;">${albums.length} ${albums.length===1?'record':'records'} logged</div>
+        <div style="font-size:11px;color:var(--fg3);margin-top:6px;letter-spacing:0.06em;">${activeCount} ${activeCount===1?'record':'records'} · ${albums.filter(a=>a.shelved).length} shelved</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         ${syncPillHTML()}
@@ -389,8 +390,9 @@ function renderMain(){
       <button class="tab-btn${activeTab==='collection'?' active':''}" onclick="setTab('collection')">Collection</button>
       <button class="tab-btn${activeTab==='rankings'?' active':''}" onclick="setTab('rankings')">Rankings</button>
       <button class="tab-btn${activeTab==='byyear'?' active':''}" onclick="setTab('byyear')">By Year</button>
+      <button class="tab-btn${activeTab==='shelved'?' active':''}" onclick="setTab('shelved')" style="color:${activeTab==='shelved'?'var(--fg)':''}">Shelved</button>
     </div>
-    ${activeTab==='collection'?renderCollection(filtered):activeTab==='rankings'?renderRankings():renderByYear()}`;
+    ${activeTab==='collection'?renderCollection(filtered):activeTab==='rankings'?renderRankings():activeTab==='byyear'?renderByYear():renderShelved()}`;
 }
 
 // ─────────────────────────────────────────────
@@ -491,7 +493,7 @@ function renderCollection(filtered){
 }
 function getCollectionGrid(filtered){
   const f=search.trim();
-  const list=filtered!==undefined?filtered:(f?albums.filter(a=>a.name.toLowerCase().includes(f.toLowerCase())||(a.artist||'').toLowerCase().includes(f.toLowerCase())||(a.genre||'').toLowerCase().includes(f.toLowerCase())):albums);
+  const list=filtered!==undefined?filtered:(f?albums.filter(a=>!a.shelved&&(a.name.toLowerCase().includes(f.toLowerCase())||(a.artist||'').toLowerCase().includes(f.toLowerCase())||(a.genre||'').toLowerCase().includes(f.toLowerCase()))):albums.filter(a=>!a.shelved));
   if(!list.length) return `<div class="empty"><span class="empty-icon">♪</span><div style="font-size:13px;">${albums.length===0?'No albums yet.':'No results.'}</div><div style="font-size:11px;margin-top:6px;color:var(--fg3);">${albums.length===0?'Hit "+ Add album" above.':'Try a different search.'}</div></div>`;
   return `<div class="card-grid">${list.map(a=>{
     const gc=a.tracks.filter(t=>t.isGreat).length;
@@ -703,9 +705,9 @@ function albumTile(a,tier){
   </div>`;
 }
 function renderRankings(){
-  if(!albums.length) return `<div class="empty"><span class="empty-icon">◈</span><div style="font-size:13px;">Add albums to start ranking.</div></div>`;
+  if(!albums.filter(a=>!a.shelved).length) return `<div class="empty"><span class="empty-icon">◈</span><div style="font-size:13px;">Add albums to start ranking.</div></div>`;
   const rows=TIERS.map(tier=>{
-    const ta=albums.filter(a=>a.tier===tier);
+    const ta=albums.filter(a=>!a.shelved&&a.tier===tier);
     return `<div class="tierlist-row">
       <div class="tierlist-label tl-lbl-${cls(tier)}">${esc(tier)}</div>
       <div class="tierlist-items" data-tier="${esc(tier)}"
@@ -715,7 +717,7 @@ function renderRankings(){
       </div>
     </div>`;
   }).join('');
-  const un=albums.filter(a=>!a.tier);
+  const un=albums.filter(a=>!a.shelved&&!a.tier);
   const uS=un.length?`<div class="unranked-wrap">
     <div class="unranked-header"><span class="mono-label">Unranked</span><span style="font-size:11px;color:var(--fg3);">${un.length}</span></div>
     <div class="unranked-tiles" ondragover="onDragOverTier(event,'')" ondrop="onDropOnTier(event,'')">
@@ -733,15 +735,14 @@ function renderRankings(){
 // RENDER: BY YEAR
 // ─────────────────────────────────────────────
 function renderByYear(){
-  if(!albums.length) return `<div class="empty"><span class="empty-icon">◈</span><div style="font-size:13px;">No albums yet.</div></div>`;
-  // Group by year
+  const active=albums.filter(a=>!a.shelved);
+  if(!active.length) return `<div class="empty"><span class="empty-icon">◈</span><div style="font-size:13px;">No albums yet.</div></div>`;
   const byYear={};
-  albums.forEach(a=>{
+  active.forEach(a=>{
     const y=a.releaseYear||'Unknown';
     if(!byYear[y]) byYear[y]=[];
     byYear[y].push(a);
   });
-  // Sort years descending (Unknown at bottom)
   const years=Object.keys(byYear).sort((a,b)=>{
     if(a==='Unknown') return 1;
     if(b==='Unknown') return -1;
@@ -763,6 +764,33 @@ function renderByYear(){
       <table class="year-table"><tbody>${rows}</tbody></table>
     </div>`;
   }).join('');
+}
+
+// ─────────────────────────────────────────────
+// RENDER: SHELVED
+// ─────────────────────────────────────────────
+function renderShelved(){
+  const list=albums.filter(a=>a.shelved);
+  if(!list.length) return `<div class="empty">
+    <span class="empty-icon">◫</span>
+    <div style="font-size:13px;">Nothing shelved yet.</div>
+    <div style="font-size:11px;margin-top:6px;color:var(--fg3);">Open any album and hit "Shelve" to move it here.</div>
+  </div>`;
+  return `<div style="display:flex;flex-direction:column;gap:8px;">
+    ${list.map(a=>`
+      <div style="display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--s1);border:1px solid var(--brd);border-radius:6px;">
+        <div style="flex:1;min-width:0;">
+          <div class="album-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(a.name)}</div>
+          <div style="font-size:11px;color:var(--fg2);margin-top:2px;">${esc(a.artist||'—')}${a.releaseYear?' · '+esc(a.releaseYear):''}${a.genre?' · '+esc(a.genre):''}</div>
+          ${a.shelvedNote?`<div style="font-size:11px;color:var(--fg3);margin-top:4px;font-style:italic;">"${esc(a.shelvedNote)}"</div>`:''}
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          ${a.link?`<a href="${esc(a.link)}" target="_blank" rel="noreferrer" style="font-size:11px;color:var(--fg3);text-decoration:none;padding:4px 8px;border:1px solid var(--brd);border-radius:3px;">↗</a>`:''}
+          <button onclick="unshelveAlbum('${a.id}')" style="font-size:11px;background:transparent;color:var(--ok);border:1px solid #1a5030;border-radius:3px;padding:4px 10px;cursor:pointer;">Restore</button>
+          <button onclick="deleteAlbum('${a.id}')" style="font-size:11px;background:transparent;color:var(--err);border:1px solid #5a1010;border-radius:3px;padding:4px 10px;cursor:pointer;">Delete</button>
+        </div>
+      </div>`).join('')}
+  </div>`;
 }
 
 // ─────────────────────────────────────────────
@@ -816,7 +844,10 @@ function renderDetail(){
   return `<div style="max-width:520px;margin:0 auto;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;">
       <button class="back-btn" onclick="view='main';render()">←</button>
-      <button class="btn btn-danger" onclick="deleteAlbum('${a.id}')">Delete</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" style="font-size:11px;padding:6px 14px;" onclick="promptShelve('${a.id}')">${a.shelved?'Unshelve':'Shelve'}</button>
+        <button class="btn btn-danger" onclick="deleteAlbum('${a.id}')">Delete</button>
+      </div>
     </div>
     <div class="album-name-lg" style="margin-bottom:6px;">${esc(a.name)}</div>
     ${a.artist?`<div style="font-size:15px;color:var(--fg2);margin-bottom:10px;">${esc(a.artist)}</div>`:''}
@@ -827,10 +858,18 @@ function renderDetail(){
       ${gc?`<span class="chip" style="color:var(--acc);" id="gc-chip">· ★ ${gc} fav${gc!==1?'s':''}</span>`:''}
     </div>
     ${a.link?`<a href="${esc(a.link)}" target="_blank" rel="noreferrer" class="link-btn">↗ Open in music app</a>`:''}
+    ${a.shelved?`
     <div class="divider"></div>
-    <div class="field"><label>Tier</label><div class="tier-pills" id="detail-tier-pills">${tierPillsHTML(a.tier||'','setDetailTier',true)}</div></div>
+    <div style="background:var(--s1);border:1px solid var(--brd);border-left:3px solid var(--fg3);border-radius:4px;padding:12px 14px;">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--fg3);margin-bottom:6px;">Shelved</div>
+      <input type="text" placeholder="Why? (optional note)" value="${esc(a.shelvedNote||'')}"
+        oninput="updateShelvedNote('${a.id}',this.value)"
+        style="background:transparent;border:none;border-bottom:1px solid var(--brd);border-radius:0;padding:4px 0;font-size:13px;color:var(--fg2);">
+    </div>`:`
     <div class="divider"></div>
-    ${a.tracks.length?`<div><div class="mono-label" style="margin-bottom:10px;">Tracklist — click to toggle favourites</div><div id="detail-tracks">${a.tracks.map((t,i)=>`<div class="track-row${t.isGreat?' great':''}" onclick="toggleGreatDetail('${t.id}')"><span class="track-num">${String(i+1).padStart(2,'0')}</span><span class="track-name">${esc(t.name)}</span>${t.isGreat?'<span class="star">★</span>':''}</div>`).join('')}</div></div>`:`<div style="font-size:12px;color:var(--fg3);font-style:italic;">No tracks recorded.</div>`}
+    <div class="field"><label>Tier</label><div class="tier-pills" id="detail-tier-pills">${tierPillsHTML(a.tier||'','setDetailTier',true)}</div></div>`}
+    <div class="divider"></div>
+    ${a.tracks.length?`<div><div class="mono-label" style="margin-bottom:10px;">Tracklist${a.shelved?'':' — click to toggle favourites'}</div><div id="detail-tracks">${a.tracks.map((t,i)=>`<div class="track-row${t.isGreat?' great':''}" ${a.shelved?'':'onclick="toggleGreatDetail(\''+t.id+'\')"'}><span class="track-num">${String(i+1).padStart(2,'0')}</span><span class="track-name">${esc(t.name)}</span>${t.isGreat?'<span class="star">★</span>':''}</div>`).join('')}</div></div>`:`<div style="font-size:12px;color:var(--fg3);font-style:italic;">No tracks recorded.</div>`}
   </div>`;
 }
 
@@ -889,6 +928,26 @@ function toggleGreatDetail(trackId){
 function deleteAlbum(id){
   if(!confirm('Remove this album?'))return;
   albums=albums.filter(a=>a.id!==id);save();view='main';render();
+}
+function promptShelve(id){
+  const a=albums.find(x=>x.id===id); if(!a) return;
+  if(a.shelved){ unshelveAlbum(id); return; }
+  const note=prompt('Add a note (optional):')||'';
+  shelveAlbum(id,note);
+}
+function shelveAlbum(id,note){
+  const a=albums.find(x=>x.id===id); if(!a) return;
+  a.shelved=true; a.shelvedNote=note||''; a.tier=null;
+  save(); view='main'; activeTab='shelved'; render();
+}
+function unshelveAlbum(id){
+  const a=albums.find(x=>x.id===id); if(!a) return;
+  a.shelved=false; a.shelvedNote='';
+  save(); view='main'; activeTab='collection'; render();
+}
+function updateShelvedNote(id,note){
+  const a=albums.find(x=>x.id===id); if(!a) return;
+  a.shelvedNote=note; save();
 }
 
 // ─────────────────────────────────────────────
