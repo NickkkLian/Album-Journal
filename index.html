@@ -946,9 +946,32 @@ function exportShowcase(){
     generatedAt:new Date().toISOString(),
     sections
   };
-  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  publishPublic('album-journal.public.json',JSON.stringify(payload,null,2),pub.length);
+}
+
+// Publish public data straight to the GitHub data repo (same repo as main sync, root path);
+// falls back to a local download when GitHub is not configured or the publish fails.
+async function publishPublic(filename,json,count){
+  if(ghReady()){
+    try{
+      setSync('busy','Publishing…');
+      const PUBLIC_REPO='Database-Public'; // 公开数据专用仓库（public）——网站只从这里读取，碰不到私有库
+      const url=`https://api.github.com/repos/${ghConfig.owner}/${PUBLIC_REPO}/contents/${filename}`;
+      const head=await fetch(url,{headers:ghH()});
+      const sha=head.ok?(await head.json()).sha:undefined;
+      const body={message:`publish ${filename} (${count} entries)`,content:b64enc(json)};
+      if(sha) body.sha=sha;
+      const res=await fetch(url,{method:'PUT',headers:ghH(),body:JSON.stringify(body)});
+      if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.message||`HTTP ${res.status}`);}
+      setSync('ok',`Published ${count} → ${filename}`);
+      return;
+    }catch(e){
+      setSync('error',`Publish failed: ${e.message} — downloading instead`);
+    }
+  }
+  const blob=new Blob([json],{type:'application/json'});
   const url=URL.createObjectURL(blob);
-  const el=document.createElement('a');el.href=url;el.download='album-journal.public.json';el.click();
+  const el=document.createElement('a');el.href=url;el.download=filename;el.click();
   setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
 function openDetail(id){detailId=id;view='detail';render();}
