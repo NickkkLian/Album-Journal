@@ -382,6 +382,7 @@ function renderMain(){
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         ${syncPillHTML()}
+        <button class="icon-btn" onclick="exportShowcase()" title="Export public albums as JSON">⬡ Showcase</button>
         <button class="icon-btn" onclick="view='settings';render()" title="Sync settings">⚙</button>
         <button class="btn btn-primary" onclick="startAdd()">+ Add album</button>
       </div>
@@ -500,7 +501,7 @@ function getCollectionGrid(filtered){
     return `<div class="album-card" onclick="openDetail('${a.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;">
         <div style="min-width:0;flex:1;"><div class="album-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(a.name)}</div><div style="font-size:11px;color:var(--fg2);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(a.artist||'—')}</div></div>
-        ${tierBadge(a.tier)}
+        <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;">${a.public?`<span style="font-size:9px;padding:1px 6px;border-radius:2px;background:rgba(80,184,112,0.15);color:var(--ok);border:1px solid #1a5030;letter-spacing:0.06em;">PUB</span>`:''} ${tierBadge(a.tier)}</div>
       </div>
       <div class="meta-chips">
         ${a.releaseYear?`<span class="chip">${esc(a.releaseYear)}</span>`:''}
@@ -870,6 +871,11 @@ function renderDetail(){
     <div class="field"><label>Tier</label><div class="tier-pills" id="detail-tier-pills">${tierPillsHTML(a.tier||'','setDetailTier',true)}</div></div>`}
     <div class="divider"></div>
     ${a.tracks.length?`<div><div class="mono-label" style="margin-bottom:10px;">Tracklist${a.shelved?'':' — click to toggle favourites'}</div><div id="detail-tracks">${a.tracks.map((t,i)=>`<div class="track-row${t.isGreat?' great':''}" ${a.shelved?'':'onclick="toggleGreatDetail(\''+t.id+'\')"'}><span class="track-num">${String(i+1).padStart(2,'0')}</span><span class="track-name">${esc(t.name)}</span>${t.isGreat?'<span class="star">★</span>':''}</div>`).join('')}</div></div>`:`<div style="font-size:12px;color:var(--fg3);font-style:italic;">No tracks recorded.</div>`}
+    <div class="divider"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <span style="font-size:11px;color:var(--fg3);">Include in public showcase export</span>
+      <button onclick="togglePublic('${a.id}')" style="font-size:11px;padding:4px 14px;border-radius:3px;cursor:pointer;border:1px solid ${a.public?'#1a5030':'var(--brd)'};background:${a.public?'rgba(80,184,112,0.12)':'transparent'};color:${a.public?'var(--ok)':'var(--fg3)'};">${a.public?'✓ Public':'Make public'}</button>
+    </div>
   </div>`;
 }
 
@@ -905,8 +911,45 @@ function toggleGreatAdd(i){
 function saveAlbum(){
   if(!addForm.name.trim())return;
   const tl=addForm.tracksText.split('\n').map(s=>s.trim()).filter(Boolean);
-  albums.unshift({id:uid(),name:addForm.name.trim(),artist:addForm.artist.trim(),releaseYear:addForm.year.trim(),genre:addForm.genre.trim(),link:addForm.link.trim(),tracks:tl.map((t,i)=>({id:uid(),name:t,isGreat:addForm.great.includes(i)})),tier:addForm.tier||null,addedAt:Date.now()});
+  albums.unshift({id:uid(),name:addForm.name.trim(),artist:addForm.artist.trim(),releaseYear:addForm.year.trim(),genre:addForm.genre.trim(),link:addForm.link.trim(),tracks:tl.map((t,i)=>({id:uid(),name:t,isGreat:addForm.great.includes(i)})),tier:addForm.tier||null,public:false,addedAt:Date.now()});
   save();view='main';render();
+}
+function togglePublic(id){
+  const a=albums.find(x=>x.id===id);if(!a)return;
+  a.public=!a.public;save();render();
+}
+function exportShowcase(){
+  const pub=albums.filter(a=>a.public&&!a.shelved);
+  if(!pub.length){alert('No albums marked as public yet.\nOpen an album and toggle "Make public" at the bottom.');return;}
+  // Group by tier for sections; unranked goes last
+  const grouped={};
+  pub.forEach(a=>{const k=a.tier||'unranked';if(!grouped[k])grouped[k]=[];grouped[k].push(a);});
+  const tierOrder=[...TIERS,'unranked'];
+  const sections=tierOrder.filter(k=>grouped[k]).map(k=>({
+    type:k.toLowerCase().replace(/\s+/g,'-'),
+    label:k==='unranked'?'Unranked':`${k} — ${TIER_DESC[k]||k}`,
+    items:grouped[k].map(a=>({
+      id:a.id,
+      name:a.name,
+      summary:[a.artist,a.releaseYear].filter(Boolean).join(' · '),
+      category:a.tier||'',
+      content:a.tracks.length
+        ?a.tracks.map((t,i)=>`${String(i+1).padStart(2,'0')}. ${t.name}${t.isGreat?' ★':''}`).join('\n')
+        :'',
+      tags:a.genre?[a.genre]:[],
+      updatedAt:a.addedAt?new Date(a.addedAt).toISOString():''
+    }))
+  }));
+  const payload={
+    dbId:'album-journal',
+    title:'Album Journal',
+    generatedAt:new Date().toISOString(),
+    sections
+  };
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const el=document.createElement('a');el.href=url;el.download='album-journal.public.json';el.click();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
 function openDetail(id){detailId=id;view='detail';render();}
 function setDetailTier(t){
