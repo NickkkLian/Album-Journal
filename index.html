@@ -240,7 +240,9 @@ function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(
 // ─────────────────────────────────────────────
 function loadLocal(){ try{const s=localStorage.getItem('alj-data');if(s)albums=JSON.parse(s);}catch(e){} }
 function saveLocal(){ try{localStorage.setItem('alj-data',JSON.stringify(albums));}catch(e){} }
-function loadGHConfig(){ try{const s=localStorage.getItem('alj-gh');if(s)ghConfig={...ghConfig,...JSON.parse(s)};}catch(e){} }
+function loadGHConfig(){ try{const s=localStorage.getItem('alj-gh');if(s)ghConfig={...ghConfig,...JSON.parse(s)};}catch(e){}
+  /* [hub-portal] 令牌为空时从共享配置 pha-config 读 owner+token（附加，安全合并，不覆盖已填，不改 repo/path） */
+  try{var _pha=JSON.parse(localStorage.getItem('pha-config')||'null');if(_pha&&_pha.token&&!ghConfig.token){ghConfig.owner=ghConfig.owner||_pha.owner;ghConfig.token=_pha.token;}}catch(e){} }
 function saveGHConfig(){ localStorage.setItem('alj-gh',JSON.stringify(ghConfig)); }
 function ghReady(){ return !!(ghConfig.token&&ghConfig.owner&&ghConfig.repo&&ghConfig.path); }
 
