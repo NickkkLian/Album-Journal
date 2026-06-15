@@ -203,6 +203,11 @@ textarea{resize:vertical;line-height:1.8;}
 ::-webkit-scrollbar{width:5px;}
 ::-webkit-scrollbar-track{background:var(--bg);}
 ::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:3px;}
+/* [hub-mobile] 手机端：标签栏横向滚动不裁切 */
+@media (max-width:640px){
+  .tab-bar{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .tab-btn{white-space:nowrap;flex:0 0 auto;padding:10px 14px;}
+}
 </style>
 </head>
 <body>
