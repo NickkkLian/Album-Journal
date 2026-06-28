@@ -227,13 +227,28 @@ let addForm   = {name:'',artist:'',year:'',genre:'',link:'',tier:'',tracksText:'
 let ghConfig  = {token:'',owner:'',repo:'',path:'albums.json'};
 let ghSha     = null;
 let syncState = 'idle';
-let syncMsg   = 'Not set up';
+let syncMsg   = (localStorage.getItem('pha-lang')==='en'?'Not set up':'未设置');
 let syncTimer = null;
 
 const TIERS     = ['T0','T1','T2','T3','T4','T5','T6','T7','T8','Trash'];
 const TIER_DESC = {T0:'Essential',T1:'Amazing',T2:'Great',T3:'Good',T4:'Decent',T5:'Okay',T6:'Meh',T7:'Weak',T8:'Barely',Trash:'Not for me'};
 const TIER_RANK = {T0:0,T1:1,T2:2,T3:3,T4:4,T5:5,T6:6,T7:7,T8:8,Trash:9};
 function tierRank(t){ return t!=null ? (TIER_RANK[t]??9) : 10; }
+
+// ─────────────────────────────────────────────
+// 双语 i18n（全站共享 pha-lang，默认 zh）。本 app 原生英文，中文为新增译文。
+// TIERS（T0…Trash）是存储值，保持不变；TIER_DESC 中文版仅供显示，原版仍供 showcase 导出。
+// ─────────────────────────────────────────────
+let lang = (() => { try { return localStorage.getItem('pha-lang') === 'en' ? 'en' : 'zh'; } catch { return 'zh'; } })();
+const T = (zh, en) => lang === 'en' ? en : zh;
+const TIER_DESC_ZH = {T0:'必听',T1:'惊艳',T2:'很棒',T3:'不错',T4:'还行',T5:'一般',T6:'平淡',T7:'较弱',T8:'勉强',Trash:'不合我'};
+const tierDesc = t => lang === 'en' ? (TIER_DESC[t] || t) : (TIER_DESC_ZH[t] || TIER_DESC[t] || t);
+function toggleLang(){
+  lang = lang === 'en' ? 'zh' : 'en';
+  try { localStorage.setItem('pha-lang', lang); } catch {}
+  document.documentElement.lang = lang === 'en' ? 'en' : 'zh';
+  render();
+}
 
 let dragId   = null;
 let dragTier = null;
@@ -271,25 +286,25 @@ function ghURL(){
 
 async function ghLoad(){
   if(!ghReady()) return;
-  setSync('busy','Loading…');
+  setSync('busy',T('加载中…','Loading…'));
   try{
     const res=await fetch(ghURL(),{headers:ghH()});
-    if(res.status===404){ setSync('ok','Connected — will create file on first save'); ghSha=null; return; }
+    if(res.status===404){ setSync('ok',T('已连接 — 首次保存时创建文件','Connected — will create file on first save')); ghSha=null; return; }
     if(!res.ok) throw new Error(`${res.status} ${(await res.json()).message}`);
     const d=await res.json();
     ghSha=d.sha;
     albums=JSON.parse(b64dec(d.content));
     saveLocal();
-    setSync('ok',`Loaded — ${albums.length} albums`);
+    setSync('ok',T(`已加载 — ${albums.length} 张专辑`,`Loaded — ${albums.length} albums`));
     render();
   }catch(e){
-    setSync('error',`Load failed: ${e.message}`);
+    setSync('error',T('加载失败：','Load failed: ')+e.message);
   }
 }
 
 async function ghPush(){
   if(!ghReady()) return;
-  setSync('busy','Syncing…');
+  setSync('busy',T('同步中…','Syncing…'));
   const body={message:`album-journal sync ${new Date().toISOString().slice(0,16).replace('T',' ')}`,content:b64enc(JSON.stringify(albums,null,2))};
   if(ghSha) body.sha=ghSha;
   try{
@@ -306,9 +321,9 @@ async function ghPush(){
     const d=await res.json();
     ghSha=d.content.sha;
     const t=new Date();
-    setSync('ok',`Synced ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`);
+    setSync('ok',T('已同步 ','Synced ')+`${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`);
   }catch(e){
-    setSync('error',`Sync failed: ${e.message}`);
+    setSync('error',T('同步失败：','Sync failed: ')+e.message);
   }
 }
 
@@ -320,13 +335,13 @@ async function ghTest(){
   ghConfig.owner=document.getElementById('s-owner')?.value||ghConfig.owner;
   ghConfig.repo=document.getElementById('s-repo')?.value||ghConfig.repo;
   ghConfig.path=document.getElementById('s-path')?.value||ghConfig.path;
-  el.className='test-result';el.textContent='Testing…';el.style.display='block';
+  el.className='test-result';el.textContent=T('测试中…','Testing…');el.style.display='block';
   try{
     const res=await fetch(`https://api.github.com/repos/${ghConfig.owner}/${ghConfig.repo}`,{headers:ghH()});
     if(!res.ok) throw new Error(`${res.status}: ${(await res.json()).message}`);
     const d=await res.json();
     el.className='test-result test-ok';
-    el.textContent=`✓ Connected to "${d.full_name}" (${d.private?'private':'public'})`;
+    el.textContent=T('✓ 已连接到 "','✓ Connected to "')+d.full_name+'" ('+(d.private?T('私有','private'):T('公开','public'))+')';
   }catch(e){
     el.className='test-result test-err';
     el.textContent=`✗ ${e.message}`;
@@ -336,7 +351,7 @@ async function ghTest(){
 function schedulePush(){
   clearTimeout(syncTimer);
   if(!ghReady()){ return; }
-  setSync('busy','Pending…');
+  setSync('busy',T('待同步…','Pending…'));
   syncTimer=setTimeout(ghPush,2500);
 }
 
@@ -364,7 +379,7 @@ function tierBadge(tier){ return tier?`<span class="tier-badge tb-${cls(tier)}">
 function tierPillsHTML(cur,fn,desc){
   return TIERS.map(t=>{
     const a=cur===t;
-    return `<button class="tier-pill${a?' tp-'+cls(t):''}" onclick="${fn}('${esc(t)}')">${esc(t)}${desc?` <span style="font-size:10px;opacity:0.55">— ${TIER_DESC[t]}</span>`:''}</button>`;
+    return `<button class="tier-pill${a?' tp-'+cls(t):''}" onclick="${fn}('${esc(t)}')">${esc(t)}${desc?` <span style="font-size:10px;opacity:0.55">— ${tierDesc(t)}</span>`:''}</button>`;
   }).join('');
 }
 function syncPillHTML(){
@@ -385,20 +400,21 @@ function renderMain(){
     <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:2rem;gap:16px;flex-wrap:wrap;">
       <div>
         <div class="display">Album Journal</div>
-        <div style="font-size:11px;color:var(--fg3);margin-top:6px;letter-spacing:0.06em;">${activeCount} ${activeCount===1?'record':'records'} · ${albums.filter(a=>a.shelved).length} shelved</div>
+        <div style="font-size:11px;color:var(--fg3);margin-top:6px;letter-spacing:0.06em;">${activeCount} ${T('张',activeCount===1?'record':'records')} · ${albums.filter(a=>a.shelved).length} ${T('已搁置','shelved')}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         ${syncPillHTML()}
-        <button class="icon-btn" onclick="exportShowcase()" title="Export public albums as JSON">⬡ Showcase</button>
-        <button class="icon-btn" onclick="view='settings';render()" title="Sync settings">⚙</button>
-        <button class="btn btn-primary" onclick="startAdd()">+ Add album</button>
+        <button class="icon-btn" onclick="exportShowcase()" title="${T('导出公开专辑为 JSON','Export public albums as JSON')}">⬡ ${T('展示','Showcase')}</button>
+        <button class="icon-btn" onclick="view='settings';render()" title="${T('同步设置','Sync settings')}">⚙</button>
+        <button class="icon-btn" onclick="toggleLang()" title="中 / EN">${T('EN','中')}</button>
+        <button class="btn btn-primary" onclick="startAdd()">+ ${T('添加专辑','Add album')}</button>
       </div>
     </div>
     <div class="tab-bar">
-      <button class="tab-btn${activeTab==='collection'?' active':''}" onclick="setTab('collection')">Collection</button>
-      <button class="tab-btn${activeTab==='rankings'?' active':''}" onclick="setTab('rankings')">Rankings</button>
-      <button class="tab-btn${activeTab==='byyear'?' active':''}" onclick="setTab('byyear')">By Year</button>
-      <button class="tab-btn${activeTab==='shelved'?' active':''}" onclick="setTab('shelved')" style="color:${activeTab==='shelved'?'var(--fg)':''}">Shelved</button>
+      <button class="tab-btn${activeTab==='collection'?' active':''}" onclick="setTab('collection')">${T('收藏','Collection')}</button>
+      <button class="tab-btn${activeTab==='rankings'?' active':''}" onclick="setTab('rankings')">${T('排名','Rankings')}</button>
+      <button class="tab-btn${activeTab==='byyear'?' active':''}" onclick="setTab('byyear')">${T('按年份','By Year')}</button>
+      <button class="tab-btn${activeTab==='shelved'?' active':''}" onclick="setTab('shelved')" style="color:${activeTab==='shelved'?'var(--fg)':''}">${T('已搁置','Shelved')}</button>
     </div>
     ${activeTab==='collection'?renderCollection(filtered):activeTab==='rankings'?renderRankings():activeTab==='byyear'?renderByYear():renderShelved()}`;
 }
@@ -413,59 +429,58 @@ function renderSettings(){
     <div style="max-width:580px;margin:0 auto;">
       <div style="display:flex;align-items:center;gap:16px;margin-bottom:2rem;">
         <button class="back-btn" onclick="view='main';render()">←</button>
-        <div class="display" style="font-size:1.7rem;">GitHub sync</div>
+        <div class="display" style="font-size:1.7rem;">${T("GitHub 同步","GitHub sync")}</div>
+        <button class="icon-btn" style="margin-left:auto;" onclick="toggleLang()" title="中 / EN">${T("EN","中")}</button>
       </div>
 
       ${isNew?`
       <div style="margin-bottom:2rem;">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.12em;color:var(--fg3);margin-bottom:1rem;">First-time setup</div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.12em;color:var(--fg3);margin-bottom:1rem;">${T("首次设置","First-time setup")}</div>
         <div class="onboard-step">
           <div class="onboard-num">1</div>
           <div class="onboard-text">
-            Create a <strong>private</strong> GitHub repo for your data — e.g. <code>album-data</code>. This is separate from the repo hosting this page.
+            ${T(`为你的数据创建一个<strong>私有</strong> GitHub 仓库 — 例如 <code>album-data</code>。它与托管本页面的仓库是分开的。`,`Create a <strong>private</strong> GitHub repo for your data — e.g. <code>album-data</code>. This is separate from the repo hosting this page.`)}
           </div>
         </div>
         <div class="onboard-step">
           <div class="onboard-num">2</div>
           <div class="onboard-text">
-            Go to <a href="https://github.com/settings/personal-access-tokens/new" target="_blank">Settings → Personal access tokens → Fine-grained</a> and create a token with:<br>
-            · <em>Repository access</em> → your <code>album-data</code> repo only<br>
-            · <em>Permissions → Contents</em> → <strong>Read and write</strong>
+            ${T(`前往 <a href="https://github.com/settings/personal-access-tokens/new" target="_blank">Settings → Personal access tokens → Fine-grained</a> 创建一个 token：<br>· <em>Repository access</em> → 仅你的 <code>album-data</code> 仓库<br>· <em>Permissions → Contents</em> → <strong>Read and write</strong>`,`Go to <a href="https://github.com/settings/personal-access-tokens/new" target="_blank">Settings → Personal access tokens → Fine-grained</a> and create a token with:<br>· <em>Repository access</em> → your <code>album-data</code> repo only<br>· <em>Permissions → Contents</em> → <strong>Read and write</strong>`)}
           </div>
         </div>
         <div class="onboard-step">
           <div class="onboard-num">3</div>
           <div class="onboard-text">
-            Paste the token below. It's saved only in <em>this browser's</em> localStorage — repeat this step on each device you use.
+            ${T(`把 token 粘贴到下方。它只保存在<em>本浏览器</em>的 localStorage 里 — 每台设备都需重复此步。`,`Paste the token below. It's saved only in <em>this browser's</em> localStorage — repeat this step on each device you use.`)}
           </div>
         </div>
       </div>`:`
       <div style="font-size:12px;color:var(--fg3);margin-bottom:1.5rem;">
-        Token is stored in this browser's localStorage only. Repeat setup on each device.
+        ${T(`Token 仅存于本浏览器的 localStorage。每台设备都需重新设置。`,`Token is stored in this browser's localStorage only. Repeat setup on each device.`)}
       </div>`}
 
       <div style="background:var(--s1);border:1px solid var(--brd);border-radius:6px;padding:1.25rem;margin-bottom:1.25rem;">
         <div class="s-row"><label>Token</label><input type="password" id="s-token" placeholder="github_pat_…" value="${esc(c.token)}" oninput="ghConfig.token=this.value"></div>
-        <div class="s-row"><label>Owner</label><input type="text" id="s-owner" placeholder="your-username" value="${esc(c.owner)}" oninput="ghConfig.owner=this.value"></div>
-        <div class="s-row"><label>Repo</label><input type="text" id="s-repo" placeholder="album-data" value="${esc(c.repo)}" oninput="ghConfig.repo=this.value"></div>
-        <div class="s-row" style="margin-bottom:0;"><label>File path</label><input type="text" id="s-path" placeholder="albums.json" value="${esc(c.path)}" oninput="ghConfig.path=this.value"></div>
+        <div class="s-row"><label>${T("Owner","Owner")}</label><input type="text" id="s-owner" placeholder="your-username" value="${esc(c.owner)}" oninput="ghConfig.owner=this.value"></div>
+        <div class="s-row"><label>${T("仓库","Repo")}</label><input type="text" id="s-repo" placeholder="album-data" value="${esc(c.repo)}" oninput="ghConfig.repo=this.value"></div>
+        <div class="s-row" style="margin-bottom:0;"><label>${T("文件路径","File path")}</label><input type="text" id="s-path" placeholder="albums.json" value="${esc(c.path)}" oninput="ghConfig.path=this.value"></div>
       </div>
 
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-        <button class="btn btn-ghost" onclick="ghTest()">Test connection</button>
-        <button class="btn btn-primary" onclick="saveSettings()">Save &amp; sync now</button>
-        ${!isNew?`<button class="btn btn-danger" onclick="clearSettings()">Disconnect</button>`:''}
+        <button class="btn btn-ghost" onclick="ghTest()">${T("测试连接","Test connection")}</button>
+        <button class="btn btn-primary" onclick="saveSettings()">${T("保存并同步","Save &amp; sync now")}</button>
+        ${!isNew?`<button class="btn btn-danger" onclick="clearSettings()">${T("断开连接","Disconnect")}</button>`:''}
       </div>
       <div id="test-result" class="test-result"></div>
 
       ${!isNew?`
       <div class="divider"></div>
-      <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.12em;color:var(--fg3);margin-bottom:10px;">Manual controls</div>
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.12em;color:var(--fg3);margin-bottom:10px;">${T("手动控制","Manual controls")}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-ghost" onclick="ghLoad()">↓ Pull from GitHub</button>
-        <button class="btn btn-ghost" onclick="ghPush()">↑ Push to GitHub</button>
+        <button class="btn btn-ghost" onclick="ghLoad()">↓ ${T("从 GitHub 拉取","Pull from GitHub")}</button>
+        <button class="btn btn-ghost" onclick="ghPush()">↑ ${T("推送到 GitHub","Push to GitHub")}</button>
       </div>
-      <div style="font-size:11px;color:var(--fg3);margin-top:8px;">Pull overwrites local data with the repo version.</div>
+      <div style="font-size:11px;color:var(--fg3);margin-top:8px;">${T("拉取会用仓库版本覆盖本地数据。","Pull overwrites local data with the repo version.")}</div>
       `:''}
     </div>`;
 }
@@ -483,11 +498,11 @@ function saveSettings(){
 }
 
 function clearSettings(){
-  if(!confirm('Disconnect GitHub? Local data stays intact.')) return;
+  if(!confirm(T('断开 GitHub？本地数据保持不变。','Disconnect GitHub? Local data stays intact.'))) return;
   ghConfig={token:'',owner:'',repo:'',path:'albums.json'};
   ghSha=null;
   saveGHConfig();
-  setSyncState('idle','Not set up');
+  setSyncState('idle',T('未设置','Not set up'));
   render();
 }
 function setSyncState(s,m){ syncState=s; syncMsg=m; }
@@ -496,13 +511,13 @@ function setSyncState(s,m){ syncState=s; syncMsg=m; }
 // RENDER: COLLECTION
 // ─────────────────────────────────────────────
 function renderCollection(filtered){
-  const sb=albums.length>4?`<div class="search-wrap"><span class="search-icon">⌕</span><input type="search" placeholder="Search title, artist, genre…" value="${esc(search)}" oninput="search=this.value;document.getElementById('grid-area').innerHTML=getCollectionGrid()"></div>`:'';
+  const sb=albums.length>4?`<div class="search-wrap"><span class="search-icon">⌕</span><input type="search" placeholder="${T('搜索标题、艺人、流派…','Search title, artist, genre…')}" value="${esc(search)}" oninput="search=this.value;document.getElementById('grid-area').innerHTML=getCollectionGrid()"></div>`:'';
   return sb+`<div id="grid-area">${getCollectionGrid(filtered)}</div>`;
 }
 function getCollectionGrid(filtered){
   const f=search.trim();
   const list=filtered!==undefined?filtered:(f?albums.filter(a=>!a.shelved&&(a.name.toLowerCase().includes(f.toLowerCase())||(a.artist||'').toLowerCase().includes(f.toLowerCase())||(a.genre||'').toLowerCase().includes(f.toLowerCase()))):albums.filter(a=>!a.shelved));
-  if(!list.length) return `<div class="empty"><span class="empty-icon">♪</span><div style="font-size:13px;">${albums.length===0?'No albums yet.':'No results.'}</div><div style="font-size:11px;margin-top:6px;color:var(--fg3);">${albums.length===0?'Hit "+ Add album" above.':'Try a different search.'}</div></div>`;
+  if(!list.length) return `<div class="empty"><span class="empty-icon">♪</span><div style="font-size:13px;">${albums.length===0?T('还没有专辑。','No albums yet.'):T('没有结果。','No results.')}</div><div style="font-size:11px;margin-top:6px;color:var(--fg3);">${albums.length===0?T('点上方「+ 添加专辑」。','Hit "+ Add album" above.'):T('换个搜索词试试。','Try a different search.')}</div></div>`;
   return `<div class="card-grid">${list.map(a=>{
     const gc=a.tracks.filter(t=>t.isGreat).length;
     return `<div class="album-card" onclick="openDetail('${a.id}')">
@@ -627,7 +642,7 @@ function exportTierImage(){
   ctx.fillStyle=FG; ctx.font='italic 300 28px Georgia,serif'; ctx.textBaseline='middle';
   ctx.fillText('Album Journal',20,HEADER_H*0.45);
   ctx.fillStyle=FG2; ctx.font='11px monospace';
-  ctx.fillText(`${albums.filter(a=>a.tier).length} ranked  ·  ${albums.length} total`,20,HEADER_H*0.78);
+  ctx.fillText(T(`${albums.filter(a=>a.tier).length} 已排名  ·  ${albums.length} 总计`,`${albums.filter(a=>a.tier).length} ranked  ·  ${albums.length} total`),20,HEADER_H*0.78);
 
   let y=HEADER_H;
   TIERS.forEach((tier,ti)=>{
@@ -713,7 +728,7 @@ function albumTile(a,tier){
   </div>`;
 }
 function renderRankings(){
-  if(!albums.filter(a=>!a.shelved).length) return `<div class="empty"><span class="empty-icon">◈</span><div style="font-size:13px;">Add albums to start ranking.</div></div>`;
+  if(!albums.filter(a=>!a.shelved).length) return `<div class="empty"><span class="empty-icon">◈</span><div style="font-size:13px;">${T("添加专辑以开始排名。","Add albums to start ranking.")}</div></div>`;
   const rows=TIERS.map(tier=>{
     const ta=albums.filter(a=>!a.shelved&&a.tier===tier);
     return `<div class="tierlist-row">
@@ -727,14 +742,14 @@ function renderRankings(){
   }).join('');
   const un=albums.filter(a=>!a.shelved&&!a.tier);
   const uS=un.length?`<div class="unranked-wrap">
-    <div class="unranked-header"><span class="mono-label">Unranked</span><span style="font-size:11px;color:var(--fg3);">${un.length}</span></div>
+    <div class="unranked-header"><span class="mono-label">${T("未排名","Unranked")}</span><span style="font-size:11px;color:var(--fg3);">${un.length}</span></div>
     <div class="unranked-tiles" ondragover="onDragOverTier(event,'')" ondrop="onDropOnTier(event,'')">
       ${un.map(a=>albumTile(a,'')).join('')}
     </div>
   </div>`:'';
   return `
     <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
-      <button class="btn btn-ghost" onclick="exportTierImage()" style="font-size:11px;padding:6px 14px;">↓ Export as image</button>
+      <button class="btn btn-ghost" onclick="exportTierImage()" style="font-size:11px;padding:6px 14px;">↓ ${T("导出为图片","Export as image")}</button>
     </div>
     <div class="tierlist-wrap">${rows}</div>${uS}`;
 }
@@ -744,16 +759,16 @@ function renderRankings(){
 // ─────────────────────────────────────────────
 function renderByYear(){
   const active=albums.filter(a=>!a.shelved);
-  if(!active.length) return `<div class="empty"><span class="empty-icon">◈</span><div style="font-size:13px;">No albums yet.</div></div>`;
+  if(!active.length) return `<div class="empty"><span class="empty-icon">◈</span><div style="font-size:13px;">${T("还没有专辑。","No albums yet.")}</div></div>`;
   const byYear={};
   active.forEach(a=>{
-    const y=a.releaseYear||'Unknown';
+    const y=a.releaseYear||'__unknown__';
     if(!byYear[y]) byYear[y]=[];
     byYear[y].push(a);
   });
   const years=Object.keys(byYear).sort((a,b)=>{
-    if(a==='Unknown') return 1;
-    if(b==='Unknown') return -1;
+    if(a==='__unknown__') return 1;
+    if(b==='__unknown__') return -1;
     return Number(b)-Number(a);
   });
   return years.map(year=>{
@@ -768,7 +783,7 @@ function renderByYear(){
       </tr>`;
     }).join('');
     return `<div class="year-section">
-      <div class="year-heading">${esc(year)}</div>
+      <div class="year-heading">${year==='__unknown__'?T('未知年份','Unknown'):esc(year)}</div>
       <table class="year-table"><tbody>${rows}</tbody></table>
     </div>`;
   }).join('');
@@ -781,8 +796,8 @@ function renderShelved(){
   const list=albums.filter(a=>a.shelved);
   if(!list.length) return `<div class="empty">
     <span class="empty-icon">◫</span>
-    <div style="font-size:13px;">Nothing shelved yet.</div>
-    <div style="font-size:11px;margin-top:6px;color:var(--fg3);">Open any album and hit "Shelve" to move it here.</div>
+    <div style="font-size:13px;">${T("还没有搁置的专辑。","Nothing shelved yet.")}</div>
+    <div style="font-size:11px;margin-top:6px;color:var(--fg3);">${T('打开任意专辑点「搁置」即可移到这里。','Open any album and hit "Shelve" to move it here.')}</div>
   </div>`;
   return `<div style="display:flex;flex-direction:column;gap:8px;">
     ${list.map(a=>`
@@ -794,8 +809,8 @@ function renderShelved(){
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;">
           ${a.link?`<a href="${esc(a.link)}" target="_blank" rel="noreferrer" style="font-size:11px;color:var(--fg3);text-decoration:none;padding:4px 8px;border:1px solid var(--brd);border-radius:3px;">↗</a>`:''}
-          <button onclick="unshelveAlbum('${a.id}')" style="font-size:11px;background:transparent;color:var(--ok);border:1px solid #1a5030;border-radius:3px;padding:4px 10px;cursor:pointer;">Restore</button>
-          <button onclick="deleteAlbum('${a.id}')" style="font-size:11px;background:transparent;color:var(--err);border:1px solid #5a1010;border-radius:3px;padding:4px 10px;cursor:pointer;">Delete</button>
+          <button onclick="unshelveAlbum('${a.id}')" style="font-size:11px;background:transparent;color:var(--ok);border:1px solid #1a5030;border-radius:3px;padding:4px 10px;cursor:pointer;">${T("恢复","Restore")}</button>
+          <button onclick="deleteAlbum('${a.id}')" style="font-size:11px;background:transparent;color:var(--err);border:1px solid #5a1010;border-radius:3px;padding:4px 10px;cursor:pointer;">${T("删除","Delete")}</button>
         </div>
       </div>`).join('')}
   </div>`;
@@ -808,34 +823,34 @@ function renderAddForm(){
   return `<div style="max-width:520px;margin:0 auto;">
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:2.5rem;">
       <button class="back-btn" onclick="cancelAdd()">←</button>
-      <div class="display" style="font-size:1.7rem;">Add album</div>
-      <div class="mono-label" style="margin-left:auto;">Step ${addStep} / 2</div>
+      <div class="display" style="font-size:1.7rem;">${T("添加专辑","Add album")}</div>
+      <div class="mono-label" style="margin-left:auto;">${T("第","Step")} ${addStep} / 2</div>
     </div>
     ${addStep===1?renderStep1():renderStep2()}
   </div>`;
 }
 function renderStep1(){
   return `
-    <div class="field"><label>Album name *</label><input id="f-name" type="text" placeholder="e.g. OK Computer" value="${esc(addForm.name)}" oninput="addForm.name=this.value"></div>
-    <div class="field"><label>Artist</label><input type="text" placeholder="e.g. Radiohead" value="${esc(addForm.artist)}" oninput="addForm.artist=this.value"></div>
+    <div class="field"><label>${T("专辑名 *","Album name *")}</label><input id="f-name" type="text" placeholder="e.g. OK Computer" value="${esc(addForm.name)}" oninput="addForm.name=this.value"></div>
+    <div class="field"><label>${T("艺人","Artist")}</label><input type="text" placeholder="e.g. Radiohead" value="${esc(addForm.artist)}" oninput="addForm.artist=this.value"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-      <div class="field"><label>Release year</label><input type="text" placeholder="1997" value="${esc(addForm.year)}" oninput="addForm.year=this.value"></div>
-      <div class="field"><label>Genre</label><input type="text" placeholder="Art rock" value="${esc(addForm.genre)}" oninput="addForm.genre=this.value"></div>
+      <div class="field"><label>${T("发行年份","Release year")}</label><input type="text" placeholder="1997" value="${esc(addForm.year)}" oninput="addForm.year=this.value"></div>
+      <div class="field"><label>${T("流派","Genre")}</label><input type="text" placeholder="${T('艺术摇滚','Art rock')}" value="${esc(addForm.genre)}" oninput="addForm.genre=this.value"></div>
     </div>
-    <div class="field"><label>NetEase / QQ Music link</label><input type="url" placeholder="https://music.163.com/album?id=…" value="${esc(addForm.link)}" oninput="addForm.link=this.value"></div>
-    <div class="field"><label>Tier (optional)</label><div class="tier-pills">${tierPillsHTML(addForm.tier,'toggleAddTier',false)}</div></div>
-    <div style="margin-top:1.5rem;"><button class="btn btn-primary" onclick="goStep2()" style="width:100%;">Next — add tracks →</button></div>`;
+    <div class="field"><label>${T("网易云 / QQ 音乐链接","NetEase / QQ Music link")}</label><input type="url" placeholder="https://music.163.com/album?id=…" value="${esc(addForm.link)}" oninput="addForm.link=this.value"></div>
+    <div class="field"><label>${T("等级（可选）","Tier (optional)")}</label><div class="tier-pills">${tierPillsHTML(addForm.tier,'toggleAddTier',false)}</div></div>
+    <div style="margin-top:1.5rem;"><button class="btn btn-primary" onclick="goStep2()" style="width:100%;">${T("下一步 — 添加曲目 →","Next — add tracks →")}</button></div>`;
 }
 function renderStep2(){
   const tl=addForm.tracksText.split('\n').map(t=>t.trim()).filter(Boolean);
   return `
-    <div class="field"><label>Tracklist — one track per line</label><textarea id="f-tracks" rows="10" placeholder="Airbag&#10;Paranoid Android&#10;Subterranean Homesick Alien&#10;…" oninput="onTracksInput(this.value)">${esc(addForm.tracksText)}</textarea></div>
+    <div class="field"><label>${T("曲目表 — 每行一首","Tracklist — one track per line")}</label><textarea id="f-tracks" rows="10" placeholder="Airbag&#10;Paranoid Android&#10;Subterranean Homesick Alien&#10;…" oninput="onTracksInput(this.value)">${esc(addForm.tracksText)}</textarea></div>
     <div id="fav-section" style="${tl.length?'':'display:none'}">
-      <div class="field" style="margin-top:0.5rem;"><label>★ Click tracks to mark favourites</label><div id="track-list-add" style="margin-top:6px;">${buildTrackListAdd(tl)}</div></div>
+      <div class="field" style="margin-top:0.5rem;"><label>${T("★ 点击曲目标记最爱","★ Click tracks to mark favourites")}</label><div id="track-list-add" style="margin-top:6px;">${buildTrackListAdd(tl)}</div></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:1.5rem;">
-      <button class="btn btn-ghost" onclick="addStep=1;render()" style="min-width:110px;">← Back</button>
-      <button class="btn btn-primary" onclick="saveAlbum()" style="flex:1;">Save album</button>
+      <button class="btn btn-ghost" onclick="addStep=1;render()" style="min-width:110px;">← ${T("返回","Back")}</button>
+      <button class="btn btn-primary" onclick="saveAlbum()" style="flex:1;">${T("保存专辑","Save album")}</button>
     </div>`;
 }
 function buildTrackListAdd(tl){
@@ -853,8 +868,8 @@ function renderDetail(){
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;">
       <button class="back-btn" onclick="view='main';render()">←</button>
       <div style="display:flex;gap:8px;">
-        <button class="btn btn-ghost" style="font-size:11px;padding:6px 14px;" onclick="promptShelve('${a.id}')">${a.shelved?'Unshelve':'Shelve'}</button>
-        <button class="btn btn-danger" onclick="deleteAlbum('${a.id}')">Delete</button>
+        <button class="btn btn-ghost" style="font-size:11px;padding:6px 14px;" onclick="promptShelve('${a.id}')">${a.shelved?T('取消搁置','Unshelve'):T('搁置','Shelve')}</button>
+        <button class="btn btn-danger" onclick="deleteAlbum('${a.id}')">${T("删除","Delete")}</button>
       </div>
     </div>
     <div class="album-name-lg" style="margin-bottom:6px;">${esc(a.name)}</div>
@@ -862,26 +877,26 @@ function renderDetail(){
     <div class="meta-chips" style="margin-bottom:1.5rem;" id="meta-chips">
       ${a.releaseYear?`<span class="chip">${esc(a.releaseYear)}</span>`:''}
       ${a.genre?`<span class="chip">${a.releaseYear?'·':''} ${esc(a.genre)}</span>`:''}
-      ${a.tracks.length?`<span class="chip">· ${a.tracks.length} tracks</span>`:''}
-      ${gc?`<span class="chip" style="color:var(--acc);" id="gc-chip">· ★ ${gc} fav${gc!==1?'s':''}</span>`:''}
+      ${a.tracks.length?`<span class="chip">· ${a.tracks.length} ${T('首','tracks')}</span>`:''}
+      ${gc?`<span class="chip" style="color:var(--acc);" id="gc-chip">· ★ ${gc} ${T('最爱','fav'+(gc!==1?'s':''))}</span>`:''}
     </div>
-    ${a.link?`<a href="${esc(a.link)}" target="_blank" rel="noreferrer" class="link-btn">↗ Open in music app</a>`:''}
+    ${a.link?`<a href="${esc(a.link)}" target="_blank" rel="noreferrer" class="link-btn">↗ ${T("在音乐 App 打开","Open in music app")}</a>`:''}
     ${a.shelved?`
     <div class="divider"></div>
     <div style="background:var(--s1);border:1px solid var(--brd);border-left:3px solid var(--fg3);border-radius:4px;padding:12px 14px;">
-      <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--fg3);margin-bottom:6px;">Shelved</div>
-      <input type="text" placeholder="Why? (optional note)" value="${esc(a.shelvedNote||'')}"
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--fg3);margin-bottom:6px;">${T("已搁置","Shelved")}</div>
+      <input type="text" placeholder="${T('为什么？（可选备注）','Why? (optional note)')}" value="${esc(a.shelvedNote||'')}"
         oninput="updateShelvedNote('${a.id}',this.value)"
         style="background:transparent;border:none;border-bottom:1px solid var(--brd);border-radius:0;padding:4px 0;font-size:13px;color:var(--fg2);">
     </div>`:`
     <div class="divider"></div>
-    <div class="field"><label>Tier</label><div class="tier-pills" id="detail-tier-pills">${tierPillsHTML(a.tier||'','setDetailTier',true)}</div></div>`}
+    <div class="field"><label>${T("等级","Tier")}</label><div class="tier-pills" id="detail-tier-pills">${tierPillsHTML(a.tier||'','setDetailTier',true)}</div></div>`}
     <div class="divider"></div>
-    ${a.tracks.length?`<div><div class="mono-label" style="margin-bottom:10px;">Tracklist${a.shelved?'':' — click to toggle favourites'}</div><div id="detail-tracks">${a.tracks.map((t,i)=>`<div class="track-row${t.isGreat?' great':''}" ${a.shelved?'':'onclick="toggleGreatDetail(\''+t.id+'\')"'}><span class="track-num">${String(i+1).padStart(2,'0')}</span><span class="track-name">${esc(t.name)}</span>${t.isGreat?'<span class="star">★</span>':''}</div>`).join('')}</div></div>`:`<div style="font-size:12px;color:var(--fg3);font-style:italic;">No tracks recorded.</div>`}
+    ${a.tracks.length?`<div><div class="mono-label" style="margin-bottom:10px;">${T('曲目表','Tracklist')}${a.shelved?'':T(' — 点击切换最爱',' — click to toggle favourites')}</div><div id="detail-tracks">${a.tracks.map((t,i)=>`<div class="track-row${t.isGreat?' great':''}" ${a.shelved?'':'onclick="toggleGreatDetail(\''+t.id+'\')"'}><span class="track-num">${String(i+1).padStart(2,'0')}</span><span class="track-name">${esc(t.name)}</span>${t.isGreat?'<span class="star">★</span>':''}</div>`).join('')}</div></div>`:`<div style="font-size:12px;color:var(--fg3);font-style:italic;">${T("未记录曲目。","No tracks recorded.")}</div>`}
     <div class="divider"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;">
-      <span style="font-size:11px;color:var(--fg3);">Include in public showcase export</span>
-      <button onclick="togglePublic('${a.id}')" style="font-size:11px;padding:4px 14px;border-radius:3px;cursor:pointer;border:1px solid ${a.public?'#1a5030':'var(--brd)'};background:${a.public?'rgba(80,184,112,0.12)':'transparent'};color:${a.public?'var(--ok)':'var(--fg3)'};">${a.public?'✓ Public':'Make public'}</button>
+      <span style="font-size:11px;color:var(--fg3);">${T("纳入公开展示导出","Include in public showcase export")}</span>
+      <button onclick="togglePublic('${a.id}')" style="font-size:11px;padding:4px 14px;border-radius:3px;cursor:pointer;border:1px solid ${a.public?'#1a5030':'var(--brd)'};background:${a.public?'rgba(80,184,112,0.12)':'transparent'};color:${a.public?'var(--ok)':'var(--fg3)'};">${a.public?T('✓ 公开','✓ Public'):T('设为公开','Make public')}</button>
     </div>
   </div>`;
 }
@@ -927,7 +942,7 @@ function togglePublic(id){
 }
 function exportShowcase(){
   const pub=albums.filter(a=>a.public&&!a.shelved);
-  if(!pub.length){alert('No albums marked as public yet.\nOpen an album and toggle "Make public" at the bottom.');return;}
+  if(!pub.length){alert(T('还没有标记为公开的专辑。\n打开一个专辑，在底部切换「设为公开」。','No albums marked as public yet.\nOpen an album and toggle "Make public" at the bottom.'));return;}
   // Group by tier for sections; unranked goes last
   const grouped={};
   pub.forEach(a=>{const k=a.tier||'unranked';if(!grouped[k])grouped[k]=[];grouped[k].push(a);});
@@ -961,7 +976,7 @@ function exportShowcase(){
 async function publishPublic(filename,json,count){
   if(ghReady()){
     try{
-      setSync('busy','Publishing…');
+      setSync('busy',T('发布中…','Publishing…'));
       const PUBLIC_REPO='Database-Public'; // 公开数据专用仓库（public）——网站只从这里读取，碰不到私有库
       const url=`https://api.github.com/repos/${ghConfig.owner}/${PUBLIC_REPO}/contents/${filename}`;
       const head=await fetch(url,{headers:ghH()});
@@ -970,10 +985,10 @@ async function publishPublic(filename,json,count){
       if(sha) body.sha=sha;
       const res=await fetch(url,{method:'PUT',headers:ghH(),body:JSON.stringify(body)});
       if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.message||`HTTP ${res.status}`);}
-      setSync('ok',`Published ${count} → ${filename}`);
+      setSync('ok',T('已发布 ','Published ')+count+' → '+filename);
       return;
     }catch(e){
-      setSync('error',`Publish failed: ${e.message} — downloading instead`);
+      setSync('error',T('发布失败：','Publish failed: ')+e.message+T(' — 改为下载',' — downloading instead'));
     }
   }
   const blob=new Blob([json],{type:'application/json'});
@@ -999,13 +1014,13 @@ function toggleGreatDetail(trackId){
   else{if(chip)chip.remove();}
 }
 function deleteAlbum(id){
-  if(!confirm('Remove this album?'))return;
+  if(!confirm(T('移除这张专辑？','Remove this album?')))return;
   albums=albums.filter(a=>a.id!==id);save();view='main';render();
 }
 function promptShelve(id){
   const a=albums.find(x=>x.id===id); if(!a) return;
   if(a.shelved){ unshelveAlbum(id); return; }
-  const note=prompt('Add a note (optional):')||'';
+  const note=prompt(T('添加备注（可选）：','Add a note (optional):'))||'';
   shelveAlbum(id,note);
 }
 function shelveAlbum(id,note){
@@ -1030,7 +1045,7 @@ loadLocal();
 loadGHConfig();
 
 if(ghReady()){
-  syncMsg='Connecting…';
+  syncMsg=T('连接中…','Connecting…');
   render();
   ghLoad();
 }else{
