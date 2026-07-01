@@ -186,6 +186,8 @@ textarea{resize:vertical;line-height:1.8;}
 .tl-tile.drag-over{outline:2px dashed var(--acc);outline-offset:2px;}
 .tl-tile.dragging{opacity:0.3;}
 .tierlist-items.tier-drag-over,.unranked-tiles.tier-drag-over{outline:2px dashed var(--acc);outline-offset:-2px;}
+.tl-tile{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+.tl-ghost{position:fixed;transform:translate(-50%,-50%);z-index:3000;pointer-events:none;opacity:0.92;box-shadow:0 10px 30px rgba(0,0,0,0.55);border-color:var(--acc)!important;}
 
 /* by year */
 .year-section{margin-bottom:2rem;}
@@ -207,6 +209,13 @@ textarea{resize:vertical;line-height:1.8;}
 @media (max-width:640px){
   .tab-bar{overflow-x:auto;-webkit-overflow-scrolling:touch;}
   .tab-btn{white-space:nowrap;flex:0 0 auto;padding:10px 14px;}
+  /* 手机端：每行 3-4 张专辑（网格自适应）+ 更紧凑的等级标签 */
+  .tierlist-label{width:52px;font-size:1.3rem;padding:3px 2px;}
+  .tierlist-items,.unranked-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));align-content:flex-start;gap:5px;padding:6px;}
+  .tl-tile{width:auto;min-height:56px;padding:6px;}
+  .tl-tile-name{font-size:0.9rem;-webkit-line-clamp:2;}
+  .tl-tile-meta{font-size:10px;}
+  .tierlist-row{min-height:68px;}
 }
 </style>
 </head>
@@ -587,6 +596,55 @@ function onDropOnTier(e,tier){
   for(let i=albums.length-1;i>=0;i--){ if((albums[i].tier||'')===(tier||'')){ idx=i+1; break; } }
   albums.splice(idx,0,drag);
   dragId=null; save(); render();
+}
+
+// ── 触屏拖拽（长按 350ms 拿起，再拖到目标；复用上面的 drop 逻辑）──
+let tDrag=null, tTimer=null;
+function endTouchDrag(){ if(tTimer){clearTimeout(tTimer);tTimer=null;} if(tDrag&&tDrag.ghost)tDrag.ghost.remove(); clearDragVisuals(); tDrag=null; dragId=null; }
+function setupTouchDrag(){
+  document.addEventListener('touchstart',e=>{
+    const tile=e.target.closest && e.target.closest('.tl-tile');
+    if(!tile||e.touches.length>1){ endTouchDrag(); return; }
+    const t=e.touches[0];
+    const st={ id:tile.dataset.id, tile, x:t.clientX, y:t.clientY, active:false, ghost:null };
+    tDrag=st;
+    tTimer=setTimeout(()=>{
+      if(tDrag!==st) return;
+      st.active=true; dragId=st.id; tile.classList.add('dragging');
+      const g=tile.cloneNode(true); g.className='tl-tile tl-ghost'; g.style.width=tile.offsetWidth+'px';
+      g.style.left=st.x+'px'; g.style.top=st.y+'px'; document.body.appendChild(g); st.ghost=g;
+      if(navigator.vibrate)try{navigator.vibrate(15)}catch(_){}
+    },350);
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{
+    if(!tDrag) return;
+    const t=e.touches[0];
+    if(!tDrag.active){ if(Math.hypot(t.clientX-tDrag.x,t.clientY-tDrag.y)>10){ clearTimeout(tTimer); tTimer=null; tDrag=null; } return; }
+    e.preventDefault();
+    tDrag.ghost.style.left=t.clientX+'px'; tDrag.ghost.style.top=t.clientY+'px';
+    const under=document.elementFromPoint(t.clientX,t.clientY);
+    clearDragVisuals(); tDrag.tile.classList.add('dragging');
+    const ot=under&&under.closest&&under.closest('.tl-tile');
+    const oz=under&&under.closest&&under.closest('.tierlist-items,.unranked-tiles');
+    if(ot&&ot.dataset.id!==tDrag.id) ot.classList.add('drag-over');
+    else if(oz) oz.classList.add('tier-drag-over');
+  },{passive:false});
+  document.addEventListener('touchend',e=>{
+    if(!tDrag) return;
+    if(tTimer){ clearTimeout(tTimer); tTimer=null; }
+    if(tDrag.active){
+      e.preventDefault(); window.__ajSuppressTap=Date.now();
+      const t=e.changedTouches&&e.changedTouches[0];
+      const under=t?document.elementFromPoint(t.clientX,t.clientY):null;
+      dragId=tDrag.id;
+      const ot=under&&under.closest&&under.closest('.tl-tile');
+      const oz=under&&under.closest&&under.closest('.tierlist-items,.unranked-tiles');
+      if(ot&&ot.dataset.id!==tDrag.id){ const tier=(ot.closest('.tierlist-items')||{}).dataset?((ot.closest('.tierlist-items')||{}).dataset.tier||''):''; onDrop({preventDefault(){},stopPropagation(){}}, ot.dataset.id, tier); }
+      else if(oz){ onDropOnTier({preventDefault(){}}, oz.dataset.tier||''); }
+    }
+    endTouchDrag();
+  },{passive:false});
+  document.addEventListener('touchcancel',endTouchDrag);
 }
 
 // ─────────────────────────────────────────────
@@ -996,7 +1054,7 @@ async function publishPublic(filename,json,count){
   const el=document.createElement('a');el.href=url;el.download=filename;el.click();
   setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
-function openDetail(id){detailId=id;view='detail';render();}
+function openDetail(id){ if(window.__ajSuppressTap&&Date.now()-window.__ajSuppressTap<400){window.__ajSuppressTap=0;return;} detailId=id;view='detail';render();}
 function setDetailTier(t){
   const a=albums.find(x=>x.id===detailId);if(!a)return;
   a.tier=a.tier===t?null:t;save();
@@ -1043,6 +1101,7 @@ function updateShelvedNote(id,note){
 // ─────────────────────────────────────────────
 loadLocal();
 loadGHConfig();
+setupTouchDrag();
 
 if(ghReady()){
   syncMsg=T('连接中…','Connecting…');
