@@ -450,7 +450,7 @@ function renderSettings(){
   return `
     <div style="max-width:580px;margin:0 auto;">
       <div style="display:flex;align-items:center;gap:16px;margin-bottom:2rem;">
-        <button class="back-btn" onclick="view='main';render()">←</button>
+        <button aria-label="返回" class="back-btn" onclick="view='main';render()">←</button>
         <div class="display" style="font-size:1.7rem;">${T("GitHub 同步","GitHub sync")}</div>
         <button class="icon-btn" style="margin-left:auto;" onclick="toggleLang()" title="中 / EN">${T("EN","中")}</button>
       </div>
@@ -893,7 +893,7 @@ function renderShelved(){
 function renderAddForm(){
   return `<div style="max-width:520px;margin:0 auto;">
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:2.5rem;">
-      <button class="back-btn" onclick="cancelAdd()">←</button>
+      <button aria-label="返回" class="back-btn" onclick="cancelAdd()">←</button>
       <div class="display" style="font-size:1.7rem;">${T("添加专辑","Add album")}</div>
       <div class="mono-label" style="margin-left:auto;">${T("第","Step")} ${addStep} / 2</div>
     </div>
@@ -937,7 +937,7 @@ function renderDetail(){
   const gc=a.tracks.filter(t=>t.isGreat).length;
   return `<div style="max-width:520px;margin:0 auto;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;">
-      <button class="back-btn" onclick="view='main';render()">←</button>
+      <button aria-label="返回" class="back-btn" onclick="view='main';render()">←</button>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-ghost" style="font-size:11px;padding:6px 14px;" onclick="promptShelve('${a.id}')">${a.shelved?T('取消搁置','Unshelve'):T('搁置','Shelve')}</button>
         <button class="btn btn-danger" onclick="deleteAlbum('${a.id}')">${T("删除","Delete")}</button>
